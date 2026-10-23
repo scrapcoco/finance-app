@@ -286,30 +286,91 @@
 
   /* ---------- login ---------- */
 
-  function viewLogin() {
+  const TERMS_VERSION = '1';
+  const COPYRIGHT = `© ${new Date().getFullYear()} HardPoint. Все права защищены.`;
+  const TERMS_HTML = `
+    <ol class="terms">
+      <li><b>Это тестовая версия.</b> Приложение создаётся одним человеком для себя и друзей. Оно бесплатное, это не коммерческий сервис, и в нём могут быть ошибки.</li>
+      <li><b>Что хранится:</b> твой email, пароль (в зашифрованном виде, его никто не может прочитать) и записи, которые ты вносишь сам: суммы, категории, даты, комментарии, долги.</li>
+      <li><b>Кто видит данные.</b> Другие пользователи твои записи не видят. Владелец сервера технически имеет доступ к базе данных, но обязуется не просматривать твои записи без твоей просьбы (например, чтобы помочь с ошибкой).</li>
+      <li><b>Не вноси секретное:</b> номера карт, пароли от банков, PIN-коды и другие данные, утечка которых может навредить. Для теста можно использовать примерные суммы.</li>
+      <li><b>Данные никому не передаются и не продаются.</b> Рекламы нет. Сервер находится в Германии (Oracle Cloud, Франкфурт).</li>
+      <li><b>Сохранность.</b> Каждый день делаются резервные копии, но в тестовой версии полной гарантии сохранности нет.</li>
+      <li><b>Удаление.</b> Ты можешь в любой момент удалить аккаунт в настройках, и все твои данные будут удалены безвозвратно.</li>
+      <li><b>Изменения.</b> Тестирование может быть остановлено, а условия изменены. Об этом ты узнаешь заранее.</li>
+    </ol>
+    <p class="terms-contact">Вопросы и предложения: <a href="https://t.me/dogshitx" target="_blank" rel="noopener">@dogshitx</a> в Telegram</p>`;
+
+  function termsSheet() {
+    openSheet(`<h2>Условия тестирования</h2><div class="terms-body">${TERMS_HTML}</div>
+      <p class="copyright">${esc(COPYRIGHT)}</p>
+      <button class="btn" id="tclose">Понятно</button>`, (s) => { s.querySelector('#tclose').onclick = closeSheet; });
+  }
+
+  function viewLogin(mode = 'login') {
     $view.classList.add('no-tabs');
-    $view.innerHTML = `<form class="login" id="login">
+    const reg = mode === 'register';
+    $view.innerHTML = `<form class="login" id="login" novalidate>
       <h1>Финансы</h1>
-      <p>Войди, чтобы увидеть свои доходы, расходы и платежи.</p>
+      <p>${reg ? 'Создай аккаунт по коду приглашения.' : 'Войди, чтобы увидеть свои доходы, расходы и платежи.'}</p>
       <div class="form-list">
-        <div class="frow"><label for="em">Email</label><input id="em" type="email" autocomplete="username" required></div>
-        <div class="frow"><label for="pw">Пароль</label><input id="pw" type="password" autocomplete="current-password" required></div>
+        <div class="frow"><label for="em">Email</label><input id="em" type="email" autocomplete="${reg ? 'email' : 'username'}" required></div>
+        <div class="frow"><label for="pw">Пароль</label><input id="pw" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}" placeholder="${reg ? 'Минимум 8 символов' : ''}" required></div>
+        ${reg ? `
+        <div class="frow"><label for="pw2">Ещё раз</label><input id="pw2" type="password" autocomplete="new-password" required></div>
+        <div class="frow"><label for="inv">Код приглашения</label><input id="inv" autocomplete="off" autocapitalize="characters" required></div>` : ''}
       </div>
+      ${reg ? `<label class="check"><input type="checkbox" id="agree"><span>Я прочитал и согласен с <button type="button" class="link-btn inline" id="terms">условиями тестирования</button></span></label>` : ''}
       <div class="error" id="err" role="alert"></div>
-      <button class="btn" type="submit">Войти</button>
+      <button class="btn" type="submit">${reg ? 'Создать аккаунт' : 'Войти'}</button>
+      <button class="link-btn" type="button" id="switch" style="align-self:center">${reg ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Регистрация по приглашению'}</button>
+      <p class="copyright">${esc(COPYRIGHT)}</p>
     </form>`;
     const form = document.getElementById('login');
+    const err = document.getElementById('err');
+    document.getElementById('switch').onclick = () => viewLogin(reg ? 'login' : 'register');
+    if (reg) document.getElementById('terms').onclick = termsSheet;
+
+    const enter = async (email, password) => {
+      await pb.collection('users').authWithPassword(email, password);
+      state.cache = { cats: null, fields: null, debts: null };
+      await ensureDefaults();
+      location.hash = '#/';
+      render();
+    };
+
     form.onsubmit = async (e) => {
       e.preventDefault();
-      const btn = form.querySelector('button');
-      const err = document.getElementById('err');
-      btn.disabled = true; err.textContent = '';
+      const btn = form.querySelector('button[type=submit]');
+      const email = form.em.value.trim(), password = form.pw.value;
+      err.textContent = '';
+      if (!email || !password) { err.textContent = 'Введи email и пароль.'; return; }
+      if (reg) {
+        if (password.length < 8) { err.textContent = 'Пароль должен быть не короче 8 символов.'; return; }
+        if (password !== form.pw2.value) { err.textContent = 'Пароли не совпадают.'; return; }
+        if (!form.inv.value.trim()) { err.textContent = 'Введи код приглашения.'; return; }
+        if (!form.agree.checked) { err.textContent = 'Нужно согласиться с условиями тестирования.'; return; }
+      }
+      btn.disabled = true;
       try {
-        await pb.collection('users').authWithPassword(form.em.value.trim(), form.pw.value);
-        state.cache = { cats: null, fields: null, debts: null };
-        await ensureDefaults();
-        location.hash = '#/';
-        render();
+        if (reg) {
+          try {
+            await pb.collection('users').create({
+              email, password, passwordConfirm: password,
+              invite: form.inv.value.trim(), terms_version: TERMS_VERSION
+            });
+          } catch (ex) {
+            const d = ex.response?.data || {};
+            if (d.email) err.textContent = d.email.code === 'validation_not_unique' ? 'Такой email уже зарегистрирован. Попробуй войти.' : 'Проверь email.';
+            else if (d.password) err.textContent = 'Пароль должен быть не короче 8 символов.';
+            else if (ex.status === 400 || ex.status === 403) err.textContent = 'Неверный код приглашения.';
+            else err.textContent = errText(ex);
+            btn.disabled = false;
+            return;
+          }
+        }
+        await enter(email, password);
+        if (reg) toast('Аккаунт создан. Добро пожаловать!');
       } catch (ex) {
         err.textContent = ex.status === 400 ? 'Неверный email или пароль.' : errText(ex);
         btn.disabled = false;
@@ -825,7 +886,10 @@
       <section class="sec">
         <div class="sec-head"><h2>Аккаунт</h2></div>
         <div class="list"><div class="row" style="min-height:52px"><div class="main"><div class="name">${esc(pb.authStore.record?.email || '')}</div><div class="meta">Сервер: ${esc(CFG.PB_URL.replace('https://', ''))}</div></div></div></div>
-        <button class="btn danger" id="logout">Выйти</button>
+        <button class="btn secondary" id="logout">Выйти</button>
+        <button class="link-btn" id="show-terms" style="align-self:flex-start">Условия тестирования</button>
+        <button class="btn danger" id="del-account">Удалить аккаунт</button>
+        <p class="copyright">${esc(COPYRIGHT)}</p>
       </section>`;
 
     $view.querySelector('#addf').onclick = () => fieldSheet(null, fields.length);
@@ -850,10 +914,36 @@
         state.cache.cats = null; toast('Категория удалена'); render();
       } catch (e) { toast(errText(e)); }
     });
+    $view.querySelector('#show-terms').onclick = termsSheet;
+    $view.querySelector('#del-account').onclick = () => deleteAccountSheet();
     $view.querySelector('#logout').onclick = () => {
       pb.authStore.clear(); state.cache = { cats: null, fields: null, debts: null }; location.hash = '#/'; render();
     };
   };
+
+  function deleteAccountSheet() {
+    openSheet(`<h2>Удалить аккаунт?</h2>
+      <p style="margin:0;color:var(--soft)">Будут безвозвратно удалены аккаунт и все твои данные: записи, категории, долги, поля и напоминания. Отменить это нельзя.</p>
+      <div class="form-list"><div class="frow"><label for="dconf">Напиши УДАЛИТЬ</label><input id="dconf" autocomplete="off" autocapitalize="characters"></div></div>
+      <div class="error" id="aerr" role="alert"></div>
+      <div class="btns"><button class="btn secondary" id="acancel">Отмена</button><button class="btn danger" id="ago">Удалить навсегда</button></div>`, (s) => {
+      s.querySelector('#acancel').onclick = closeSheet;
+      s.querySelector('#ago').onclick = async () => {
+        if (s.querySelector('#dconf').value.trim().toUpperCase() !== 'УДАЛИТЬ') { s.querySelector('#aerr').textContent = 'Напиши слово УДАЛИТЬ, чтобы подтвердить.'; return; }
+        const b = s.querySelector('#ago'); b.disabled = true;
+        try {
+          try {
+            const reg = await navigator.serviceWorker?.ready;
+            const sub = await reg?.pushManager?.getSubscription();
+            if (sub) await sub.unsubscribe();
+          } catch (e) { /* не критично */ }
+          await pb.collection('users').delete(uid());
+          pb.authStore.clear(); state.cache = { cats: null, fields: null, debts: null };
+          closeSheet(); location.hash = '#/'; render(); toast('Аккаунт удалён');
+        } catch (e) { s.querySelector('#aerr').textContent = errText(e); b.disabled = false; }
+      };
+    });
+  }
 
   function fieldSheet(x, nextSort) {
     let type = x?.field_type || 'text';
