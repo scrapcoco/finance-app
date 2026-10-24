@@ -35,6 +35,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `screens/debts.js` | `debtsScreen`, `debtSheet` — прогресс и прогноз погашения |
 | `screens/settings.js` | `settingsScreen`, `fieldSheet`, `deleteAccountSheet` |
 | `screens/push.js` | `mountPushBlock` — блок push-напоминаний в настройках |
+| `screens/ingest.js` | `mountIngestBlock` — ключ для записи расходов с iPhone (Apple Pay → Быстрая команда) |
 
 Новый экран: файл в `screens/` с `export async function xxxScreen(route, alive)` + строка в `ROUTES` в `router.js`.
 
@@ -51,10 +52,12 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 - `custom_fields`: `label`, `field_type` text|number|select|date|bool|url, `options`, `sort`, `hidden`
 - `debts`: `name`, `total`, `monthly_payment`, `next_due`, `note`, `closed`
 - `push_subscriptions`: `endpoint`, `p256dh`, `auth`, `device`
-- `users`: + `invite`, `terms_version`
+- `users`: + `invite`, `terms_version`, `ingest_key_hash` (скрытое, sha256 ключа для iPhone)
 
 `adjust` меняет баланс, но не попадает в доходы, расходы и отчёты. Сумма платежа по долгу считается
 из оплаченных `transactions` с этим `debt`. Рассылка push — `server/remind.py` (systemd-таймер, 9:00); см. `server/README.md`.
+Свои эндпоинты PocketBase — `server/pb_hooks/finance_ingest.pb.js`: `GET/POST/DELETE /api/finance/key` (ключ),
+`POST /api/finance/expense` (заголовок `X-Finance-Key`, тело `{amount, merchant}` → оплаченный расход).
 
 ## Правила
 

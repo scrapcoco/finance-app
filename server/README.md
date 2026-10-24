@@ -10,6 +10,8 @@ Netlify эту папку не отдаёт (правило в `netlify.toml`), 
 | `finance-reminders.timer` | `/etc/systemd/system/finance-reminders.timer` (ежедневно в 9:00 по Варшаве) |
 | `requirements.txt` | пакеты из `/opt/finance-reminders/venv` |
 | `1792846263_owner_update_rule.js` | `/opt/pocketbase/pb_migrations/` — запрет менять `owner` при обновлении |
+| `1792900000_users_ingest_key.js` | `/opt/pocketbase/pb_migrations/` — скрытое поле `users.ingest_key_hash` |
+| `pb_hooks/finance_ingest.pb.js` | `/opt/pocketbase/pb_hooks/` — ключ и приём расходов с iPhone |
 
 Что **не** кладём в репозиторий (он публичный):
 - `vapid_private.pem` — приватный ключ push-уведомлений, лежит только на сервере рядом с `remind.py`;

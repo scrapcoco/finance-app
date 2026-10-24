@@ -4,6 +4,7 @@ import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid } from '../core/pb.js';
 import { mountPushBlock } from './push.js';
+import { mountIngestBlock } from './ingest.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
 import { getCats, getFields } from '../core/data.js';
 import { render } from '../router.js';
@@ -49,6 +50,7 @@ export async function settingsScreen(route, alive) {
     </section>`;
 
   mountPushBlock();
+  mountIngestBlock();
   $view.querySelector('#addf').onclick = () => fieldSheet(null, fields.length);
   $view.querySelectorAll('[data-editf]').forEach((b) => b.onclick = () => fieldSheet(fields.find((x) => x.id === b.dataset.editf)));
   $view.querySelectorAll('[data-hide]').forEach((b) => b.onclick = async () => {
