@@ -32,7 +32,7 @@
     const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
     return Uint8Array.from(raw, (c) => c.charCodeAt(0));
   };
-  const byEndpoint = (endpoint) => pb.collection('push_subscriptions').getFullList({ filter: pb.filter('endpoint = {:e}', { e: endpoint }) });
+  const byEndpoint = (endpoint) => pb.collection('push_subscriptions').getFullList({ filter: pb.filter('owner = {:o} && endpoint = {:e}', { o: pb.authStore.record?.id, e: endpoint }) });
 
   async function saveSubscription(sub) {
     const j = sub.toJSON();

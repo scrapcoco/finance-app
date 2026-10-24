@@ -127,24 +127,24 @@
 
   async function getCats(force) {
     if (!state.cache.cats || force) {
-      state.cache.cats = await pb.collection('categories').getFullList({ sort: 'sort,name' });
+      state.cache.cats = await pb.collection('categories').getFullList({ filter: ownerFilter(), sort: 'sort,name' });
     }
     return state.cache.cats;
   }
   async function getFields(force) {
     if (!state.cache.fields || force) {
-      state.cache.fields = await pb.collection('custom_fields').getFullList({ sort: 'sort,created' });
+      state.cache.fields = await pb.collection('custom_fields').getFullList({ filter: ownerFilter(), sort: 'sort,created' });
     }
     return state.cache.fields;
   }
   async function getDebts(force) {
     if (!state.cache.debts || force) {
-      state.cache.debts = await pb.collection('debts').getFullList({ sort: 'closed,created' });
+      state.cache.debts = await pb.collection('debts').getFullList({ filter: ownerFilter(), sort: 'closed,created' });
     }
     return state.cache.debts;
   }
   function txBetween(from, to, extra) {
-    let f = pb.filter('date >= {:a} && date < {:b}', { a: `${from} 00:00:00`, b: `${to} 00:00:00` });
+    let f = `${ownerFilter()} && ` + pb.filter('date >= {:a} && date < {:b}', { a: `${from} 00:00:00`, b: `${to} 00:00:00` });
     if (extra) f += ` && ${extra}`;
     return pb.collection('transactions').getFullList({ filter: f, sort: 'date,created', expand: 'category' });
   }
@@ -389,10 +389,10 @@
     const from = ymd(m), to = ymd(addMonths(m, 1));
     const isCur = ymd(firstOfMonth(new Date())) === from;
     const [allPaid, monthTx, upcoming, recent] = await Promise.all([
-      pb.collection('transactions').getFullList({ filter: "status = 'paid'", fields: 'kind,amount' }),
+      pb.collection('transactions').getFullList({ filter: `${ownerFilter()} && status = 'paid'`, fields: 'kind,amount' }),
       txBetween(from, to),
-      pb.collection('transactions').getList(1, 5, { filter: "status = 'planned'", sort: 'date,created', expand: 'category' }),
-      pb.collection('transactions').getList(1, 5, { filter: "status = 'paid'", sort: '-date,-created', expand: 'category' })
+      pb.collection('transactions').getList(1, 5, { filter: `${ownerFilter()} && status = 'planned'`, sort: 'date,created', expand: 'category' }),
+      pb.collection('transactions').getList(1, 5, { filter: `${ownerFilter()} && status = 'paid'`, sort: '-date,-created', expand: 'category' })
     ]);
     if (!alive()) return;
     const balance = allPaid.reduce((s, t) => s + net(t), 0);
@@ -838,7 +838,7 @@
   ROUTES.debts = async (route, alive) => {
     const [debts, pays] = await Promise.all([
       getDebts(true),
-      pb.collection('transactions').getFullList({ filter: "status = 'paid' && debt != ''", fields: 'debt,amount,date' })
+      pb.collection('transactions').getFullList({ filter: `${ownerFilter()} && status = 'paid' && debt != ''`, fields: 'debt,amount,date' })
     ]);
     if (!alive()) return;
     const paidBy = {};
@@ -952,7 +952,7 @@
       s.querySelector('#ddel')?.addEventListener('click', async () => {
         if (!confirm('Удалить долг? Платежи по нему останутся в записях.')) return;
         try {
-          const linked = await pb.collection('transactions').getFullList({ filter: pb.filter('debt = {:d}', { d: d.id }), fields: 'id' });
+          const linked = await pb.collection('transactions').getFullList({ filter: pb.filter('owner = {:o} && debt = {:d}', { o: uid(), d: d.id }), fields: 'id' });
           for (const t of linked) await pb.collection('transactions').update(t.id, { debt: '' });
           await pb.collection('debts').delete(d.id);
           state.cache.debts = null; closeSheet(); toast('Долг удалён'); render();
@@ -1017,7 +1017,7 @@
     $view.querySelectorAll('[data-delcat]').forEach((b) => b.onclick = async () => {
       if (!confirm('Удалить категорию? Записи останутся, но будут без категории.')) return;
       try {
-        const linked = await pb.collection('transactions').getFullList({ filter: pb.filter('category = {:c}', { c: b.dataset.delcat }), fields: 'id' });
+        const linked = await pb.collection('transactions').getFullList({ filter: pb.filter('owner = {:o} && category = {:c}', { o: uid(), c: b.dataset.delcat }), fields: 'id' });
         for (const t of linked) await pb.collection('transactions').update(t.id, { category: '' });
         await pb.collection('categories').delete(b.dataset.delcat);
         state.cache.cats = null; toast('Категория удалена'); render();

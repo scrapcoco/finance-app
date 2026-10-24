@@ -1,0 +1,12 @@
+[Unit]
+Description=Финансы: push-напоминания о платежах
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=pocketbase
+Group=pocketbase
+WorkingDirectory=/opt/finance-reminders
+# На сервере здесь реальный email
+Environment=VAPID_CONTACT=mailto:YOUR_EMAIL
+ExecStart=/opt/finance-reminders/venv/bin/python /opt/finance-reminders/remind.py
