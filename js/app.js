@@ -392,8 +392,8 @@
     const [allPaid, monthTx, upcoming, recent] = await Promise.all([
       pb.collection('transactions').getFullList({ filter: `${ownerFilter()} && status = 'paid'`, fields: 'kind,amount' }),
       txBetween(from, to),
-      pb.collection('transactions').getList(1, 5, { filter: `${ownerFilter()} && status = 'planned'`, sort: 'date,created', expand: 'category' }),
-      pb.collection('transactions').getList(1, 5, { filter: `${ownerFilter()} && status = 'paid'`, sort: '-date,-created', expand: 'category' })
+      isCur ? pb.collection('transactions').getList(1, 5, { filter: `${ownerFilter()} && status = 'planned'`, sort: 'date,created', expand: 'category' }) : null,
+      isCur ? pb.collection('transactions').getList(1, 5, { filter: `${ownerFilter()} && status = 'paid'`, sort: '-date,-created', expand: 'category' }) : null
     ]);
     if (!alive()) return;
     const balance = allPaid.reduce((s, t) => s + net(t), 0);
@@ -402,10 +402,14 @@
       if (t.status === 'paid') { if (t.kind === 'income') inc += t.amount; else if (t.kind === 'expense') exp += t.amount; }
       else plannedNet += net(t);
     }
+    // Для другого месяца списки показывают записи именно этого месяца
+    const monthName = MONTHS[m.getMonth()].toLowerCase();
+    const upcomingItems = isCur ? upcoming.items : monthTx.filter((t) => t.status === 'planned').slice(0, 5);
+    const recentItems = isCur ? recent.items : monthTx.filter((t) => t.status === 'paid').reverse().slice(0, 5);
     const lastDay = `${daysIn(m.getFullYear(), m.getMonth())} ${MONTHS_GEN[m.getMonth()]}`;
     const note = isCur
       ? (plannedNet ? `С учётом запланированных: ${moneySigned(balance + plannedNet)} к ${lastDay}` : 'Запланированных платежей до конца месяца нет')
-      : `Итог за ${MONTHS[m.getMonth()].toLowerCase()}: ${moneySigned(inc - exp)}`;
+      : `Итог за ${monthName}: ${moneySigned(inc - exp)}${plannedNet ? `, запланировано: ${moneySigned(plannedNet)}` : ''}`;
 
     $view.innerHTML = `
       <div class="head">${monthSwitch()}<a class="icon-btn" href="#/settings" aria-label="Настройки">${ICON.gear}</a></div>
@@ -419,16 +423,18 @@
         <button class="btn small secondary" id="cash" style="align-self:flex-start;background:rgba(255,255,255,0.08)">Указать остаток на руках</button>
       </section>
       <section class="sec">
-        <div class="sec-head"><h2>Ближайшие платежи</h2><a href="#/calendar">Календарь</a></div>
-        ${upcoming.items.length
-          ? `<div class="list">${upcoming.items.map((t) => txRow(t, { planned: true })).join('')}</div>`
-          : `<div class="list"><div class="empty">Будущих платежей нет. Добавь запись и включи «Будущий платёж».</div></div>`}
+        <div class="sec-head"><h2>${isCur ? 'Ближайшие платежи' : `Платежи за ${monthName}`}</h2><a href="#/calendar">Календарь</a></div>
+        ${upcomingItems.length
+          ? `<div class="list">${upcomingItems.map((t) => txRow(t, { planned: true })).join('')}</div>`
+          : `<div class="list"><div class="empty">${isCur ? 'Будущих платежей нет. Добавь запись и включи «Будущий платёж».' : 'Неоплаченных платежей в этом месяце нет.'}</div></div>`}
       </section>
       <section class="sec">
-        <div class="sec-head"><h2>Последние записи</h2><a href="#/history">Все</a></div>
-        ${recent.items.length
-          ? `<div class="list">${recent.items.map((t) => txRow(t)).join('')}</div>`
-          : `<div class="list"><div class="empty">Записей пока нет.<br><a class="btn small" href="#/add" style="display:inline-flex;align-items:center;margin-top:10px;text-decoration:none">Добавить первую запись</a></div></div>`}
+        <div class="sec-head"><h2>${isCur ? 'Последние записи' : `Записи за ${monthName}`}</h2><a href="#/history">Все</a></div>
+        ${recentItems.length
+          ? `<div class="list">${recentItems.map((t) => txRow(t)).join('')}</div>`
+          : isCur
+            ? `<div class="list"><div class="empty">Записей пока нет.<br><a class="btn small" href="#/add" style="display:inline-flex;align-items:center;margin-top:10px;text-decoration:none">Добавить первую запись</a></div></div>`
+            : `<div class="list"><div class="empty">Оплаченных записей в этом месяце нет.</div></div>`}
       </section>`;
     bindMonthSwitch();
     $view.querySelector('#cash').onclick = () => cashSheet(balance);
