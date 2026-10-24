@@ -1,5 +1,5 @@
 // Кэширует только оболочку приложения. Данные всегда берутся с сервера.
-const CACHE = 'finance-v8';
+const CACHE = 'finance-v9';
 const SHELL = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/pocketbase.umd.js', 'js/app.js', 'js/push.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {

@@ -96,6 +96,7 @@
     catKind: 'expense',
     repDay: null,
     repWeek: null,
+    histKind: 'all',
     cache: { cats: null, fields: null, debts: null }
   };
 
@@ -268,7 +269,7 @@
     const lead = opts.planned
       ? `<div class="datebox ${daysUntil(txDay(t)) < 0 ? 'overdue' : ''}"><b>${d.getDate()}</b><span>${MONTHS_SHORT[d.getMonth()]}</span></div>`
       : '';
-    return `<a class="row" href="#/edit/${t.id}">
+    return `<a class="row" href="#/edit/${t.id}${opts.back ? `?back=${opts.back}` : ''}">
       ${lead}
       <div class="main"><div class="name">${esc(title)}</div><div class="meta">${esc(metaParts.join(', '))}</div></div>
       <div class="amt ${t.kind === 'income' ? 'inc' : t.kind === 'expense' ? 'exp' : ''}">${signed(t.amount, t.kind)}</div>
@@ -424,7 +425,7 @@
           : `<div class="list"><div class="empty">Будущих платежей нет. Добавь запись и включи «Будущий платёж».</div></div>`}
       </section>
       <section class="sec">
-        <div class="sec-head"><h2>Последние записи</h2></div>
+        <div class="sec-head"><h2>Последние записи</h2><a href="#/history">Все</a></div>
         ${recent.items.length
           ? `<div class="list">${recent.items.map((t) => txRow(t)).join('')}</div>`
           : `<div class="list"><div class="empty">Записей пока нет.<br><a class="btn small" href="#/add" style="display:inline-flex;align-items:center;margin-top:10px;text-decoration:none">Добавить первую запись</a></div></div>`}
@@ -741,6 +742,58 @@
       try { await markPaid(sel.find((t) => t.id === b.dataset.pay)); render(); }
       catch (e) { toast(errText(e)); b.disabled = false; }
     });
+  };
+
+  /* ---------- history ---------- */
+
+  ROUTES.history = async (route, alive) => {
+    const PAGE = 50;
+    let filter = `${ownerFilter()} && status = 'paid'`;
+    if (state.histKind !== 'all') filter += ` && ${pb.filter('kind = {:k}', { k: state.histKind })}`;
+    const load = (page) => pb.collection('transactions').getList(page, PAGE, { filter, sort: '-date,-created', expand: 'category' });
+    const first = await load(1);
+    if (!alive()) return;
+    const items = first.items.slice();
+    let page = 1;
+
+    const listHtml = () => {
+      if (!items.length) return `<div class="list"><div class="empty">${state.histKind === 'income' ? 'Доходов' : state.histKind === 'expense' ? 'Расходов' : 'Записей'} пока нет.</div></div>`;
+      const groups = [];
+      for (const t of items) {
+        const key = txDay(t).slice(0, 7);
+        if (!groups.length || groups[groups.length - 1].key !== key) groups.push({ key, list: [] });
+        groups[groups.length - 1].list.push(t);
+      }
+      return groups.map((g) => {
+        const d = parseYmd(`${g.key}-01`);
+        return `<section class="sec"><div class="sec-head"><h2>${MONTHS[d.getMonth()]} ${d.getFullYear()}</h2></div>
+          <div class="list">${g.list.map((t) => txRow(t, { back: 'history' })).join('')}</div></section>`;
+      }).join('');
+    };
+    const draw = () => {
+      $view.querySelector('#hist-list').innerHTML = listHtml();
+      const more = $view.querySelector('#hist-more');
+      more.hidden = page >= first.totalPages;
+      more.disabled = false;
+    };
+
+    const seg = (k, l) => `<button type="button" data-hk="${k}" aria-pressed="${state.histKind === k}">${l}</button>`;
+    $view.innerHTML = `
+      <div class="head"><a class="icon-btn" href="#/" aria-label="Назад">${ICON.left}</a><div class="title">История</div><div style="width:44px"></div></div>
+      <div class="segment" role="group" aria-label="Тип записей">${seg('all', 'Все')}${seg('income', 'Доходы')}${seg('expense', 'Расходы')}</div>
+      <div id="hist-list" style="display:flex;flex-direction:column;gap:20px"></div>
+      <button class="btn secondary" id="hist-more">Показать ещё</button>`;
+    draw();
+    $view.querySelectorAll('[data-hk]').forEach((b) => b.onclick = () => { state.histKind = b.dataset.hk; render(); });
+    const more = $view.querySelector('#hist-more');
+    more.onclick = async () => {
+      more.disabled = true;
+      try {
+        const res = await load(page + 1);
+        if (!alive()) return;
+        page++; items.push(...res.items); draw();
+      } catch (e) { toast(errText(e)); more.disabled = false; }
+    };
   };
 
   /* ---------- reports ---------- */

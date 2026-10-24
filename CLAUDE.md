@@ -32,12 +32,13 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `home` | `ROUTES['']`, `cashSheet`, `viewAdjust` (корректировка баланса) |
 | `add / edit` | `ROUTES.add`, `ROUTES.edit`, `viewForm`, `newCategorySheet` |
 | `calendar` | `ROUTES.calendar` — сетка месяца, «Отметить оплаченным» |
+| `history` | `ROUTES.history` — все оплаченные записи по месяцам, фильтр, «Показать ещё» (по 50) |
 | `reports` | `ROUTES.reports` — день/неделя/месяц, график за полгода, по категориям |
 | `debts` | `ROUTES.debts`, `debtSheet` — прогресс и прогноз погашения |
 | `settings` | `ROUTES.settings`, `fieldSheet`, `deleteAccountSheet` |
 | `boot` | `hashchange`, `authRefresh`, регистрация `sw.js` |
 
-Маршруты — hash: `#/`, `#/add?kind=&date=&debt=&back=`, `#/edit/<id>`, `#/calendar`, `#/reports`, `#/debts`, `#/settings`.
+Маршруты — hash: `#/`, `#/add?kind=&date=&debt=&back=`, `#/edit/<id>`, `#/calendar`, `#/history`, `#/reports`, `#/debts`, `#/settings`.
 
 ## Данные (коллекции PocketBase)
 
