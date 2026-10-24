@@ -93,6 +93,8 @@
     selDay: today(),
     period: 'month',
     catKind: 'expense',
+    repDay: null,
+    repWeek: null,
     cache: { cats: null, fields: null, debts: null }
   };
 
@@ -666,11 +668,20 @@
   ROUTES.reports = async (route, alive) => {
     const m = state.month;
     let pFrom, pTo, pLabel;
-    if (state.period === 'week') {
-      const t = parseYmd(today()); const start = addDays(t, -((t.getDay() + 6) % 7));
-      pFrom = ymd(start); pTo = ymd(addDays(start, 7)); pLabel = 'Эта неделя';
-    } else if (state.period === 'year') {
-      pFrom = `${m.getFullYear()}-01-01`; pTo = `${m.getFullYear() + 1}-01-01`; pLabel = String(m.getFullYear());
+    if (state.period === 'year') state.period = 'month';
+    const t0 = parseYmd(today());
+    if (state.period === 'day') {
+      const d = state.repDay ? parseYmd(state.repDay) : t0;
+      pFrom = ymd(d); pTo = ymd(addDays(d, 1));
+      pLabel = pFrom === today() ? 'Сегодня' : pFrom === ymd(addDays(t0, -1)) ? 'Вчера' : `${d.getDate()} ${MONTHS_GEN[d.getMonth()]}`;
+    } else if (state.period === 'week') {
+      const thisMon = addDays(t0, -((t0.getDay() + 6) % 7));
+      const start = state.repWeek ? parseYmd(state.repWeek) : thisMon;
+      const end = addDays(start, 6);
+      pFrom = ymd(start); pTo = ymd(addDays(start, 7));
+      pLabel = pFrom === ymd(thisMon) ? 'Эта неделя'
+        : start.getMonth() === end.getMonth() ? `${start.getDate()}–${end.getDate()} ${MONTHS_SHORT[end.getMonth()]}`
+        : `${start.getDate()} ${MONTHS_SHORT[start.getMonth()]} – ${end.getDate()} ${MONTHS_SHORT[end.getMonth()]}`;
     } else {
       pFrom = ymd(m); pTo = ymd(addMonths(m, 1)); pLabel = `${MONTHS[m.getMonth()]} ${m.getFullYear()}`;
     }
@@ -700,8 +711,12 @@
     const seg = (k, l) => `<button type="button" data-p="${k}" aria-pressed="${state.period === k}">${l}</button>`;
 
     $view.innerHTML = `
-      <div class="head"><h1>Отчёты</h1>${state.period === 'week' ? `<div class="title">${pLabel}</div>` : monthSwitch()}</div>
-      <div class="segment" role="group" aria-label="Период">${seg('week', 'Неделя')}${seg('month', 'Месяц')}${seg('year', 'Год')}</div>
+      <div class="head"><h1>Отчёты</h1>${state.period === 'month' ? monthSwitch() : `<div class="month-switch">
+        <button class="icon-btn ghost" data-shift="-1" aria-label="Назад">${ICON.left}</button>
+        <div class="title">${esc(pLabel)}</div>
+        <button class="icon-btn ghost" data-shift="1" aria-label="Вперёд" ${pTo > today() ? 'disabled style="opacity:.3"' : ''}>${ICON.right}</button>
+      </div>`}</div>
+      <div class="segment" role="group" aria-label="Период">${seg('day', 'День')}${seg('week', 'Неделя')}${seg('month', 'Месяц')}</div>
       <div class="stats">
         <div class="stat"><div class="k">Доходы</div><div class="v inc">+${nf.format(Math.round(inc))}</div></div>
         <div class="stat"><div class="k">Расходы</div><div class="v exp">−${nf.format(Math.round(exp))}</div></div>
@@ -729,6 +744,12 @@
       </section>`;
     $view.querySelectorAll('[data-ck]').forEach((b) => b.onclick = () => { state.catKind = b.dataset.ck; render(); });
     $view.querySelectorAll('[data-p]').forEach((b) => b.onclick = () => { state.period = b.dataset.p; render(); });
+    $view.querySelectorAll('[data-shift]').forEach((b) => b.onclick = () => {
+      const n = Number(b.dataset.shift);
+      if (state.period === 'day') state.repDay = ymd(addDays(parseYmd(pFrom), n));
+      else state.repWeek = ymd(addDays(parseYmd(pFrom), 7 * n));
+      render();
+    });
     bindMonthSwitch();
   };
 
