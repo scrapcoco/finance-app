@@ -322,7 +322,7 @@
         <div class="frow"><label for="pw">Пароль</label><input id="pw" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}" placeholder="${reg ? 'Минимум 8 символов' : ''}" required></div>
         ${reg ? `
         <div class="frow"><label for="pw2">Ещё раз</label><input id="pw2" type="password" autocomplete="new-password" required></div>
-        <div class="frow"><label for="inv">Код приглашения</label><input id="inv" autocomplete="off" autocapitalize="characters" required></div>` : ''}
+        <div class="frow"><label for="inv">Код приглашения</label><input id="inv" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" required></div>` : ''}
       </div>
       ${reg ? `<label class="check"><input type="checkbox" id="agree"><span>Я прочитал и согласен с <button type="button" class="link-btn inline" id="terms">условиями тестирования</button></span></label>` : ''}
       <div class="error" id="err" role="alert"></div>

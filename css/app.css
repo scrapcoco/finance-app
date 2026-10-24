@@ -260,6 +260,7 @@ a { color: var(--soft); }
 
 /* login */
 .login { min-height: 80vh; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+.login .frow input { text-align: left; }
 .login h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; }
 .login p { margin: 0; color: var(--muted); }
 .error { color: var(--danger); font-size: 13px; }
