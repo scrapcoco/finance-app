@@ -15,7 +15,8 @@
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const nf = new Intl.NumberFormat(CFG.LOCALE, { maximumFractionDigits: 2 });
   const money = (v) => `${nf.format(Math.abs(Math.round(v * 100) / 100))} ${CFG.CURRENCY}`;
-  const signed = (v, kind) => `${kind === 'income' ? '+' : '−'}${money(v)}`;
+  const signed = (v, kind) => kind === 'adjust' ? `${v < 0 ? '−' : '+'}${money(v)}` : `${kind === 'income' ? '+' : '−'}${money(v)}`;
+  const net = (t) => t.kind === 'income' ? t.amount : t.kind === 'expense' ? -t.amount : t.amount;
   const moneySigned = (v) => `${v < 0 ? '−' : ''}${money(v)}`;
   const parseAmount = (s) => {
     const n = parseFloat(String(s ?? '').replace(/\s/g, '').replace(',', '.'));
@@ -254,7 +255,7 @@
 
   function txRow(t, opts = {}) {
     const cat = t.expand?.category?.name;
-    const title = t.note || cat || (t.kind === 'income' ? 'Доход' : 'Расход');
+    const title = t.kind === 'adjust' ? (t.note || 'Остаток на руках') : (t.note || cat || (t.kind === 'income' ? 'Доход' : 'Расход'));
     const metaParts = [];
     if (opts.planned) {
       if (t.repeat && t.repeat !== 'none') metaParts.push(REPEAT_SHORT[t.repeat]);
@@ -270,7 +271,7 @@
     return `<a class="row" href="#/edit/${t.id}">
       ${lead}
       <div class="main"><div class="name">${esc(title)}</div><div class="meta">${esc(metaParts.join(', '))}</div></div>
-      <div class="amt ${t.kind === 'income' ? 'inc' : 'exp'}">${signed(t.amount, t.kind)}</div>
+      <div class="amt ${t.kind === 'income' ? 'inc' : t.kind === 'expense' ? 'exp' : ''}">${signed(t.amount, t.kind)}</div>
     </a>`;
   }
 
@@ -394,11 +395,11 @@
       pb.collection('transactions').getList(1, 5, { filter: "status = 'paid'", sort: '-date,-created', expand: 'category' })
     ]);
     if (!alive()) return;
-    const balance = allPaid.reduce((s, t) => s + (t.kind === 'income' ? t.amount : -t.amount), 0);
+    const balance = allPaid.reduce((s, t) => s + net(t), 0);
     let inc = 0, exp = 0, plannedNet = 0;
     for (const t of monthTx) {
-      if (t.status === 'paid') { if (t.kind === 'income') inc += t.amount; else exp += t.amount; }
-      else plannedNet += t.kind === 'income' ? t.amount : -t.amount;
+      if (t.status === 'paid') { if (t.kind === 'income') inc += t.amount; else if (t.kind === 'expense') exp += t.amount; }
+      else plannedNet += net(t);
     }
     const lastDay = `${daysIn(m.getFullYear(), m.getMonth())} ${MONTHS_GEN[m.getMonth()]}`;
     const note = isCur
@@ -414,6 +415,7 @@
           <div><div class="k">Расходы</div><div class="v exp">−${money(exp)}</div></div>
         </div>
         <div class="note">${esc(note)}</div>
+        <button class="btn small secondary" id="cash" style="align-self:flex-start;background:rgba(255,255,255,0.08)">Указать остаток на руках</button>
       </section>
       <section class="sec">
         <div class="sec-head"><h2>Ближайшие платежи</h2><a href="#/calendar">Календарь</a></div>
@@ -428,13 +430,91 @@
           : `<div class="list"><div class="empty">Записей пока нет.<br><a class="btn small" href="#/add" style="display:inline-flex;align-items:center;margin-top:10px;text-decoration:none">Добавить первую запись</a></div></div>`}
       </section>`;
     bindMonthSwitch();
+    $view.querySelector('#cash').onclick = () => cashSheet(balance);
   };
+
+  function cashSheet(balance) {
+    let mode = 'add';
+    const draw = (s) => {
+      const amtVal = s.querySelector('#ca')?.value ?? '';
+      const noteVal = s.querySelector('#cn2')?.value ?? '';
+      s.innerHTML = `<h2>Остаток на руках</h2>
+        <p style="margin:0;color:var(--soft);font-size:14px">Это не доход и не расход: в отчёты не попадает, только меняет баланс. Удобно, чтобы учесть наличные или деньги, которые были до начала учёта.</p>
+        <div class="segment" role="group" aria-label="Способ">
+          <button type="button" data-mode="add" aria-pressed="${mode === 'add'}">Добавить к балансу</button>
+          <button type="button" data-mode="set" aria-pressed="${mode === 'set'}">Указать точно</button>
+        </div>
+        <div class="amount-box"><label for="ca">${mode === 'add' ? 'Сколько добавить' : 'Сколько у меня сейчас всего'}</label>
+          <div class="line"><input id="ca" inputmode="decimal" autocomplete="off" placeholder="0" value="${esc(amtVal)}"><div class="cur">${esc(CFG.CURRENCY)}</div></div></div>
+        <div class="form-list"><div class="frow"><label for="cn2">Комментарий</label><input id="cn2" maxlength="500" placeholder="Например, наличные в кармане" value="${esc(noteVal)}"></div></div>
+        <p class="hint" id="cprev" style="margin:0;color:var(--muted);font-size:13px"></p>
+        <div class="error" id="cerr2" role="alert"></div>
+        <div class="btns"><button class="btn secondary" id="ccl">Отмена</button><button class="btn" id="csv">Сохранить</button></div>`;
+      const prev = () => {
+        const v = parseAmount(s.querySelector('#ca').value);
+        const el = s.querySelector('#cprev');
+        if (!Number.isFinite(v)) { el.textContent = `Сейчас баланс: ${moneySigned(balance)}`; return; }
+        const after = mode === 'add' ? balance + v : v;
+        el.textContent = `Баланс: ${moneySigned(balance)} → ${moneySigned(after)}`;
+      };
+      prev();
+      s.querySelector('#ca').oninput = prev;
+      s.querySelectorAll('[data-mode]').forEach((b) => b.onclick = () => { mode = b.dataset.mode; draw(s); });
+      s.querySelector('#ccl').onclick = closeSheet;
+      s.querySelector('#csv').onclick = async () => {
+        const v = parseAmount(s.querySelector('#ca').value);
+        const err = s.querySelector('#cerr2');
+        if (!Number.isFinite(v) || (mode === 'add' && v === 0)) { err.textContent = 'Введи сумму.'; return; }
+        const delta = Math.round((mode === 'add' ? v : v - balance) * 100) / 100;
+        if (delta === 0) { err.textContent = 'Баланс уже равен этой сумме.'; return; }
+        try {
+          await pb.collection('transactions').create({
+            kind: 'adjust', amount: delta, date: pbDate(today()), status: 'paid', repeat: 'none',
+            note: s.querySelector('#cn2').value.trim() || 'Остаток на руках', extra: {}, owner: uid()
+          });
+          closeSheet(); toast('Баланс обновлён'); render();
+        } catch (e) { err.textContent = errText(e); }
+      };
+    };
+    openSheet('', draw);
+  }
+
+  function viewAdjust(tx) {
+    $view.innerHTML = `
+      <div class="head"><a class="icon-btn" href="#/" aria-label="Закрыть">${ICON.close}</a><div class="title">Остаток на руках</div><div style="width:44px"></div></div>
+      <p style="margin:0;color:var(--soft);font-size:14px">Корректировка баланса. Не учитывается в доходах, расходах и отчётах.</p>
+      <div class="amount-box"><label for="aa">Сумма (минус — уменьшить баланс)</label>
+        <div class="line"><input id="aa" inputmode="decimal" autocomplete="off" value="${esc(String(tx.amount).replace('.', ','))}"><div class="cur">${esc(CFG.CURRENCY)}</div></div></div>
+      <div class="form-list">
+        <div class="frow"><label for="ad">Дата</label><input id="ad" type="date" value="${esc(txDay(tx))}"></div>
+        <div class="frow"><label for="an">Комментарий</label><input id="an" maxlength="500" value="${esc(tx.note || '')}"></div>
+      </div>
+      <div class="error" id="aerr2" role="alert"></div>
+      <button class="btn" id="asv">Сохранить изменения</button>
+      <button class="btn danger" id="adel">Удалить</button>`;
+    const q = (x) => $view.querySelector(x);
+    q('#asv').onclick = async () => {
+      const v = parseAmount(q('#aa').value.replace('−', '-'));
+      if (!Number.isFinite(v) || v === 0) { q('#aerr2').textContent = 'Введи сумму (не ноль).'; return; }
+      try {
+        await pb.collection('transactions').update(tx.id, { amount: Math.round(v * 100) / 100, date: pbDate(q('#ad').value || today()), note: q('#an').value.trim() });
+        toast('Сохранено'); location.hash = '#/';
+      } catch (e) { q('#aerr2').textContent = errText(e); }
+    };
+    q('#adel').onclick = async () => {
+      if (!confirm('Удалить эту корректировку?')) return;
+      try { await pb.collection('transactions').delete(tx.id); toast('Удалено'); location.hash = '#/'; }
+      catch (e) { q('#aerr2').textContent = errText(e); }
+    };
+  }
 
   /* ---------- add / edit ---------- */
 
   ROUTES.add = (route, alive) => viewForm(null, route, alive);
   ROUTES.edit = async (route, alive) => {
     const tx = await pb.collection('transactions').getOne(route.id);
+    if (!alive()) return;
+    if (tx.kind === 'adjust') return viewAdjust(tx);
     return viewForm(tx, route, alive);
   };
 
@@ -616,7 +696,7 @@
     const byDay = {};
     for (const t of txs) {
       (byDay[txDay(t)] ||= []).push(t);
-      if (t.status === 'planned') { if (t.kind === 'income') expInc += t.amount; else expExp += t.amount; }
+      if (t.status === 'planned') { if (t.kind === 'income') expInc += t.amount; else if (t.kind === 'expense') expExp += t.amount; }
     }
     const lead = (m.getDay() + 6) % 7;
     const n = daysIn(m.getFullYear(), m.getMonth());
@@ -694,13 +774,13 @@
     for (const t of txs) {
       const d = txDay(t); if (d < pFrom || d >= pTo) continue;
       if (t.kind === 'income') { inc += t.amount; const name = t.expand?.category?.name || 'Без категории'; byCatInc[name] = (byCatInc[name] || 0) + t.amount; }
-      else { exp += t.amount; const name = t.expand?.category?.name || 'Без категории'; byCat[name] = (byCat[name] || 0) + t.amount; }
+      else if (t.kind === 'expense') { exp += t.amount; const name = t.expand?.category?.name || 'Без категории'; byCat[name] = (byCat[name] || 0) + t.amount; }
     }
     const months = [];
     for (let i = 5; i >= 0; i--) {
       const s = addMonths(m, -i), e = addMonths(s, 1);
       let mi = 0, me = 0;
-      for (const t of txs) { const d = txDay(t); if (d >= ymd(s) && d < ymd(e)) { if (t.kind === 'income') mi += t.amount; else me += t.amount; } }
+      for (const t of txs) { const d = txDay(t); if (d >= ymd(s) && d < ymd(e)) { if (t.kind === 'income') mi += t.amount; else if (t.kind === 'expense') me += t.amount; } }
       months.push({ label: MONTHS_SHORT[s.getMonth()], inc: mi, exp: me, cur: i === 0 });
     }
     const max = Math.max(1, ...months.map((x) => Math.max(x.inc, x.exp)));
