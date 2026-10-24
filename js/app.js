@@ -92,6 +92,7 @@
     month: firstOfMonth(new Date()),
     selDay: today(),
     period: 'month',
+    catKind: 'expense',
     cache: { cats: null, fields: null, debts: null }
   };
 
@@ -678,10 +679,10 @@
     const txs = await txBetween(from, to, "status = 'paid'");
     if (!alive()) return;
 
-    let inc = 0, exp = 0; const byCat = {};
+    let inc = 0, exp = 0; const byCat = {}, byCatInc = {};
     for (const t of txs) {
       const d = txDay(t); if (d < pFrom || d >= pTo) continue;
-      if (t.kind === 'income') inc += t.amount;
+      if (t.kind === 'income') { inc += t.amount; const name = t.expand?.category?.name || 'Без категории'; byCatInc[name] = (byCatInc[name] || 0) + t.amount; }
       else { exp += t.amount; const name = t.expand?.category?.name || 'Без категории'; byCat[name] = (byCat[name] || 0) + t.amount; }
     }
     const months = [];
@@ -692,7 +693,9 @@
       months.push({ label: MONTHS_SHORT[s.getMonth()], inc: mi, exp: me, cur: i === 0 });
     }
     const max = Math.max(1, ...months.map((x) => Math.max(x.inc, x.exp)));
-    const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+    const isInc = state.catKind === 'income';
+    const catTotal = isInc ? inc : exp;
+    const cats = Object.entries(isInc ? byCatInc : byCat).sort((a, b) => b[1] - a[1]);
     const catMax = cats[0]?.[1] || 1;
     const seg = (k, l) => `<button type="button" data-p="${k}" aria-pressed="${state.period === k}">${l}</button>`;
 
@@ -714,12 +717,17 @@
         </div>
       </section>
       <section class="panel">
-        <h2>Расходы по категориям</h2>
+        <h2>По категориям</h2>
+        <div class="segment" role="group" aria-label="Тип">
+          <button type="button" class="exp-on" data-ck="expense" aria-pressed="${!isInc}">Расходы</button>
+          <button type="button" class="inc-on" data-ck="income" aria-pressed="${isInc}">Доходы</button>
+        </div>
         ${cats.length ? cats.map(([name, v]) => `<div class="cat-row">
-          <div class="top"><b>${esc(name)}</b><span><b style="color:var(--ink)">${money(v)}</b> · ${Math.round((v / exp) * 100)}%</span></div>
-          <div class="meter"><i style="width:${(v / catMax) * 100}%"></i></div></div>`).join('')
-          : '<div class="empty">За этот период расходов нет.</div>'}
+          <div class="top"><b>${esc(name)}</b><span><b style="color:var(--ink)">${money(v)}</b> · ${Math.round((v / catTotal) * 100)}%</span></div>
+          <div class="meter ${isInc ? 'inc' : ''}"><i style="width:${(v / catMax) * 100}%"></i></div></div>`).join('')
+          : `<div class="empty">За этот период ${isInc ? 'доходов' : 'расходов'} нет.</div>`}
       </section>`;
+    $view.querySelectorAll('[data-ck]').forEach((b) => b.onclick = () => { state.catKind = b.dataset.ck; render(); });
     $view.querySelectorAll('[data-p]').forEach((b) => b.onclick = () => { state.period = b.dataset.p; render(); });
     bindMonthSwitch();
   };
