@@ -6,37 +6,37 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 
 ## Файлы
 
-Рабочие файлы лежат в **корне**. Папка `finance-app/` — устаревшая копия первой загрузки, не редактировать.
-
-- `index.html` — оболочка: `#view`, `#tabbar`, `#sheet-root`, `#toast`; порядок скриптов важен
+- `index.html` — оболочка: `#view`, `#tabbar`, `#sheet-root`, `#toast`; подключает `config.js`, SDK и `js/main.js` (ES-модуль)
 - `js/config.js` — `window.APP_CONFIG`: `PB_URL`, `CURRENCY`, `LOCALE`, `VAPID_PUBLIC_KEY`
-- `js/app.js` — всё приложение в одном IIFE (~1100 строк), карта ниже
-- `js/push.js` — push-напоминания; встраивается в экран «Настройки» через `MutationObserver`
-- `js/pocketbase.umd.js` — SDK PocketBase v0.28.1, не трогать
+- `js/pocketbase.umd.js` — SDK PocketBase v0.28.1 (глобальный `PocketBase`), не трогать
 - `css/app.css` — стили, цвета в CSS-переменных (`--ink`, `--soft`, `--muted`, `--inc`, `--exp`, `--line`)
 - `sw.js` — кэш оболочки (network-first), push и клик по уведомлению
 - `manifest.webmanifest`, `icons/`, `netlify.toml`
 - `server/` — копия серверной части (напоминания, systemd, миграции PocketBase); Netlify её не использует
 
-## Карта `js/app.js`
+## Карта `js/` (ES-модули, без сборки)
 
-Разделы отмечены комментариями `/* ---------- name ---------- */` — ищи по ним, а не по номерам строк.
-
-| Раздел | Что внутри |
+| Файл | Что внутри |
 |---|---|
-| `helpers` | `esc`, `money`, `signed`, `parseAmount`, даты (`ymd`, `parseYmd`, `pbDate`, `nextOccurrence`), месяцы, `ICON`, `state`, `toast`, `errText` |
-| `data` | `getCats/getFields/getDebts` (кэш в `state.cache`), `txBetween`, `ensureDefaults`, `markPaid`, `bumpDebtDue` |
-| `shell` | `TABS`, `renderTabbar`, `parseRoute`, `ROUTES`, `render`, `monthSwitch`, `txRow` |
-| `sheet` | `openSheet(html, bind)` / `closeSheet` — нижние модальные окна |
-| `login` | `viewLogin`, регистрация по инвайт-коду, `TERMS_HTML` |
-| `home` | `ROUTES['']`, `cashSheet`, `viewAdjust` (корректировка баланса) |
-| `add / edit` | `ROUTES.add`, `ROUTES.edit`, `viewForm`, `newCategorySheet` |
-| `calendar` | `ROUTES.calendar` — сетка месяца, «Отметить оплаченным» |
-| `history` | `ROUTES.history` — все оплаченные записи по месяцам, фильтр, «Показать ещё» (по 50) |
-| `reports` | `ROUTES.reports` — день/неделя/месяц, график за полгода, по категориям |
-| `debts` | `ROUTES.debts`, `debtSheet` — прогресс и прогноз погашения |
-| `settings` | `ROUTES.settings`, `fieldSheet`, `deleteAccountSheet` |
-| `boot` | `hashchange`, `authRefresh`, регистрация `sw.js` |
+| `main.js` | точка входа: `hashchange` → `render`, `authRefresh`, регистрация `sw.js` |
+| `router.js` | `ROUTES` (имя маршрута → функция экрана), `render`, нижнее меню `TABS` |
+| `ui.js` | `$view`/`$tabbar`/`$sheetRoot`, `toast`, `errText`, `openSheet`/`closeSheet`, `txRow`, `monthSwitch` |
+| `core/pb.js` | `CFG`, `pb`, `uid`, `ownerFilter` |
+| `core/util.js` | `esc`, деньги (`money`, `signed`, `parseAmount`), даты (`ymd`, `parseYmd`, `pbDate`, `nextOccurrence`), месяцы, подписи |
+| `core/icons.js` | `ICON` — inline SVG |
+| `core/state.js` | `state`: выбранный месяц/день/период/фильтры + `state.cache` справочников |
+| `core/data.js` | `getCats/getFields/getDebts` (кэш), `txBetween`, `ensureDefaults`, `markPaid`, `bumpDebtDue` |
+| `screens/login.js` | вход, регистрация по инвайт-коду, `termsSheet`, `COPYRIGHT` |
+| `screens/home.js` | `homeScreen` (баланс, платежи и записи месяца), `cashSheet` |
+| `screens/form.js` | `addScreen`, `editScreen`, `viewForm`, `viewAdjust` (корректировка), `newCategorySheet` |
+| `screens/calendar.js` | `calendarScreen` — сетка месяца, «Отметить оплаченным» |
+| `screens/history.js` | `historyScreen` — оплаченные записи по месяцам, фильтр, «Показать ещё» (по 50) |
+| `screens/reports.js` | `reportsScreen` — день/неделя/месяц, график за полгода, категории |
+| `screens/debts.js` | `debtsScreen`, `debtSheet` — прогресс и прогноз погашения |
+| `screens/settings.js` | `settingsScreen`, `fieldSheet`, `deleteAccountSheet` |
+| `screens/push.js` | `mountPushBlock` — блок push-напоминаний в настройках |
+
+Новый экран: файл в `screens/` с `export async function xxxScreen(route, alive)` + строка в `ROUTES` в `router.js`.
 
 Маршруты — hash: `#/`, `#/add?kind=&date=&debt=&back=`, `#/edit/<id>`, `#/calendar`, `#/history`, `#/reports`, `#/debts`, `#/settings`.
 
@@ -58,13 +58,14 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 
 ## Правила
 
-- Экран = функция в `ROUTES`: собирает HTML строкой в `$view.innerHTML`, потом навешивает `onclick`.
+- Экран = функция `xxxScreen(route, alive)`: собирает HTML строкой в `$view.innerHTML`, потом навешивает `onclick`.
   Любой текст пользователя в шаблоне — только через `esc()`.
 - После `await` проверять `if (!alive()) return;` — защита от гонки при быстром переключении экранов.
 - Деньги: `parseAmount` на вводе, округление `Math.round(v * 100) / 100`, вывод через `money`/`signed`.
 - Даты в базу — `pbDate(ymd)` (полдень UTC, чтобы не съезжал день).
 - После изменения категорий, полей или долгов сбрасывать `state.cache.<key> = null`.
-- Новый JS/CSS-файл → добавить в `index.html` и в `SHELL` в `sw.js`, поднять версию `CACHE`.
+- Новый JS/CSS-файл → импортировать там, где нужен, добавить в `SHELL` в `sw.js`, поднять версию `CACHE`.
+- Модули импортируют друг друга по кругу (экраны ↔ `router.js`/`ui.js`): импортированное использовать только внутри функций, не на верхнем уровне модуля.
 - Любой новый запрос списка к PocketBase — с `ownerFilter()`.
 - Репозиторий публичный: секреты только на сервере (`.env`), никогда в коде.
 - Сборщик, фреймворк и npm не добавлять без явной просьбы.

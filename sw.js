@@ -1,6 +1,7 @@
 // Кэширует только оболочку приложения. Данные всегда берутся с сервера.
-const CACHE = 'finance-v10';
-const SHELL = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/pocketbase.umd.js', 'js/app.js', 'js/push.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png'];
+const CACHE = 'finance-v11';
+const SHELL = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/pocketbase.umd.js',
+  'js/main.js', 'js/router.js', 'js/ui.js', 'js/core/pb.js', 'js/core/util.js', 'js/core/icons.js', 'js/core/state.js', 'js/core/data.js', 'js/screens/login.js', 'js/screens/home.js', 'js/screens/form.js', 'js/screens/calendar.js', 'js/screens/history.js', 'js/screens/reports.js', 'js/screens/debts.js', 'js/screens/settings.js', 'js/screens/push.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
