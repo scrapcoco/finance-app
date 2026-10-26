@@ -61,6 +61,9 @@ export async function markPaid(tx) {
   toast(msg);
 }
 
+// Каким типом записи гасится долг: «я должен» — расходом, «мне должны» — доходом (возвратом)
+export const debtKind = (d) => (d?.direction === 'lent' ? 'income' : 'expense');
+
 export async function bumpDebtDue(debtId, payDay) {
   try {
     const d = await pb.collection('debts').getOne(debtId);

@@ -4,7 +4,7 @@ import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid } from '../core/pb.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
-import { getCats, getFields, getDebts, bumpDebtDue } from '../core/data.js';
+import { getCats, getFields, getDebts, bumpDebtDue, debtKind } from '../core/data.js';
 
 export function viewAdjust(tx) {
   $view.innerHTML = `
@@ -54,14 +54,14 @@ export async function viewForm(tx, route, alive) {
     note: tx.note || '', planned: tx.status === 'planned', repeat: tx.repeat || 'none', debt: tx.debt || '',
     extra: { ...(tx.extra || {}) }
   } : {
-    kind: presetDebt ? 'expense' : (p.get('kind') || 'expense'), amount: presetDebt?.monthly_payment ? String(presetDebt.monthly_payment).replace('.', ',') : '',
+    kind: presetDebt ? debtKind(presetDebt) : (p.get('kind') || 'expense'), amount: presetDebt?.monthly_payment ? String(presetDebt.monthly_payment).replace('.', ',') : '',
     category: '', date: p.get('date') || today(), note: presetDebt ? presetDebt.name : '',
     planned: p.get('date') ? p.get('date') > today() : false, repeat: 'none', debt: presetDebt?.id || '', extra: {}
   };
 
   const draw = () => {
     const kindCats = cats.filter((c) => c.kind === f.kind);
-    const openDebts = debts.filter((d) => !d.closed || d.id === f.debt);
+    const openDebts = debts.filter((d) => (!d.closed || d.id === f.debt) && debtKind(d) === f.kind);
     const visibleFields = fields.filter((x) => !x.hidden);
     $view.innerHTML = `
       <div class="head">
@@ -92,7 +92,7 @@ export async function viewForm(tx, route, alive) {
           <button type="button" class="switch" id="pl" role="switch" aria-labelledby="pl-l" aria-checked="${f.planned}"></button>
         </div>
         ${f.planned ? `<div class="frow"><label for="rp">Повторять</label><select id="rp">${Object.entries(REPEAT_LABEL).map(([k, v]) => `<option value="${k}" ${f.repeat === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>` : ''}
-        ${f.kind === 'expense' && openDebts.length ? `<div class="frow"><label for="db">Платёж по долгу</label><select id="db"><option value="">Нет</option>${openDebts.map((d) => `<option value="${d.id}" ${f.debt === d.id ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></div>` : ''}
+        ${openDebts.length ? `<div class="frow"><label for="db">${f.kind === 'income' ? 'Возврат долга' : 'Платёж по долгу'}</label><select id="db"><option value="">Нет</option>${openDebts.map((d) => `<option value="${d.id}" ${f.debt === d.id ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></div>` : ''}
       </div>
       <div class="sec">
         <div class="sec-head"><div class="field-label">Мои поля</div><a href="#/settings">Настроить</a></div>
@@ -132,7 +132,7 @@ export async function viewForm(tx, route, alive) {
     q('#nt').oninput = (e) => { f.note = e.target.value; };
     $view.querySelectorAll('[data-kind]').forEach((b) => b.onclick = () => {
       if (f.kind === b.dataset.kind) return;
-      f.kind = b.dataset.kind; f.category = ''; if (f.kind === 'income') f.debt = ''; draw();
+      f.kind = b.dataset.kind; f.category = ''; f.debt = ''; draw();
     });
     $view.querySelectorAll('[data-cat]').forEach((b) => b.onclick = () => {
       f.category = f.category === b.dataset.cat ? '' : b.dataset.cat; draw();
@@ -171,7 +171,7 @@ export async function viewForm(tx, route, alive) {
     const data = {
       kind: f.kind, amount: Math.round(amount * 100) / 100, date: pbDate(f.date || today()),
       category: f.category, note: f.note.trim(), status: f.planned ? 'planned' : 'paid',
-      repeat: f.planned ? f.repeat : 'none', debt: f.kind === 'expense' ? f.debt : '', extra
+      repeat: f.planned ? f.repeat : 'none', debt: f.debt, extra
     };
     const btn = $view.querySelector('#save');
     btn.disabled = true; err.textContent = '';
