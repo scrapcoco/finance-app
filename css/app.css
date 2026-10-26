@@ -328,11 +328,16 @@ body::before {
   max-width: 492px; margin: 0 auto; border-radius: 30px;
   padding: 0 6px; align-items: center;
 }
-.tab-add {
-  margin-top: 0; border-radius: 22px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.12));
-  border: 1px solid rgba(255,255,255,0.35);
+/* Активный раздел — стеклянная подложка; «+» — сплошная кнопка, чтобы не путать с выбранным разделом */
+.tab {
+  height: 58px; min-height: 0; justify-content: center; border-radius: 20px;
+  border: 1px solid transparent; transition: background .2s, border-color .2s;
 }
+.tab[aria-current="page"] {
+  background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+}
+.tab-add { margin-top: 0; border-radius: 22px; background: var(--ink); color: var(--ground); }
 .view { padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + 16px); }
 .toast { bottom: calc(var(--tabbar-h) + var(--safe-b) + 8px); }
 
