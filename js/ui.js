@@ -83,3 +83,45 @@ export function openSheet(html, bind) {
 export function closeSheet() { $sheetRoot.innerHTML = ''; }
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $sheetRoot.innerHTML) closeSheet(); });
+
+// Плавающая подсветка: выбранная кнопка в любом .segment и выбранный день календаря.
+// Экраны перерисовываются целиком, поэтому прошлое место подсветки помним по aria-label переключателя
+// и при появлении нового переключателя ведём её оттуда к нажатой кнопке.
+const GLOW_BOXES = [['.segment', 'button[aria-pressed="true"]'], ['.cal-grid', '.day[aria-pressed="true"] .n']];
+const glowAt = new Map();
+
+function syncGlows() {
+  for (const [sel, pick] of GLOW_BOXES) {
+    for (const box of document.querySelectorAll(sel)) {
+      const key = box.getAttribute('aria-label') || sel;
+      let glow = box.querySelector(':scope > .seg-glow');
+      if (!glow) {
+        glow = document.createElement('i');
+        glow.className = 'seg-glow';
+        glow.setAttribute('aria-hidden', 'true');
+        box.prepend(glow);
+      }
+      const target = box.querySelector(pick);
+      if (!target) { glow.style.opacity = '0'; glow.at = null; continue; }
+      const b = box.getBoundingClientRect(), t = target.getBoundingClientRect();
+      if (!b.width) continue; // переключатель ещё скрыт
+      const to = { x: t.left - b.left - box.clientLeft, y: t.top - b.top - box.clientTop, w: t.width, h: t.height };
+      const now = glow.at;
+      if (now && Math.abs(now.x - to.x) < 0.5 && Math.abs(now.y - to.y) < 0.5 && Math.abs(now.w - to.w) < 0.5) continue;
+      const from = now || glowAt.get(key);
+      const place = (p) => { glow.style.cssText = `width:${p.w}px;height:${p.h}px;transform:translate(${p.x}px,${p.y}px);opacity:1`; };
+      if (from) {
+        glow.classList.add('still');
+        place(from);
+        void glow.offsetWidth; // зафиксировать старое место, чтобы переход сработал
+        glow.classList.remove('still');
+      }
+      place(to);
+      glow.at = to;
+      glowAt.set(key, to);
+    }
+  }
+}
+
+new MutationObserver(syncGlows).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-pressed'] });
+window.addEventListener('resize', syncGlows);
