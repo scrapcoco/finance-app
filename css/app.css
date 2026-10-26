@@ -331,12 +331,16 @@ body::before {
 /* Активный раздел — стеклянная подложка; «+» — сплошная кнопка, чтобы не путать с выбранным разделом */
 .tab {
   height: 58px; min-height: 0; justify-content: center; border-radius: 20px;
-  border: 1px solid transparent; transition: background .2s, border-color .2s;
+  transition: color .3s;
 }
-.tab[aria-current="page"] {
-  background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.22);
+.tab, .tab-add { position: relative; z-index: 1; }
+.tab-glow {
+  position: absolute; left: 0; top: 0; opacity: 0; pointer-events: none; border-radius: 20px;
+  background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+  transition: transform .42s cubic-bezier(.34,1.25,.5,1), width .42s, opacity .2s;
 }
+.tab-glow.still { transition: none; }
 .tab-add { margin-top: 0; border-radius: 22px; background: var(--ink); color: var(--ground); }
 .view { padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + 16px); }
 .toast { bottom: calc(var(--tabbar-h) + var(--safe-b) + 8px); }

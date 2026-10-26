@@ -20,11 +20,27 @@ export const TABS = [
   { r: 'debts', label: 'Долги', icon: ICON.debt }
 ];
 
+// Где стояла подсветка активного раздела до перерисовки — от этого места она переплывает к новому
+let glowFrom = null;
+
 export function renderTabbar(active) {
-  $tabbar.innerHTML = TABS.map((t) => t.add
+  $tabbar.innerHTML = '<i class="tab-glow" aria-hidden="true"></i>' + TABS.map((t) => t.add
     ? `<a class="tab-add" href="#/add" aria-label="Добавить запись">${t.icon}</a>`
     : `<a class="tab" href="#/${t.r}" ${t.r === active ? 'aria-current="page"' : ''}>${t.icon}${t.label}</a>`
   ).join('');
+  const glow = $tabbar.querySelector('.tab-glow');
+  const cur = $tabbar.querySelector('.tab[aria-current="page"]');
+  if (!cur) { glowFrom = null; return; }
+  const to = { x: cur.offsetLeft, y: cur.offsetTop, w: cur.offsetWidth, h: cur.offsetHeight };
+  const place = (p) => { glow.style.cssText = `width:${p.w}px;height:${p.h}px;transform:translate(${p.x}px,${p.y}px);opacity:1`; };
+  if (glowFrom) {
+    glow.classList.add('still');
+    place(glowFrom);
+    void glow.offsetWidth; // зафиксировать старое место, чтобы переход сработал
+    glow.classList.remove('still');
+  }
+  place(to);
+  glowFrom = to;
 }
 
 export function parseRoute() {
