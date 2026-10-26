@@ -285,3 +285,60 @@ a { color: var(--soft); }
 .terms b { color: var(--ink); }
 .terms-contact { margin: 12px 0 0; color: var(--soft); font-size: 14px; }
 .copyright { margin: 4px 0 0; text-align: center; color: var(--dim); font-size: 12px; }
+
+/* ===== Стиль «Glass — Аврора» (макет: Main-GlassAurora в «Учёт финансов — шаблон») =====
+   Тёмно-синий фон с тремя размытыми пятнами, полупрозрачные «стеклянные» поверхности, плавающее меню. */
+:root {
+  --ground: #070B18;
+  --glass: rgba(255,255,255,0.07);
+  --glass-strong: rgba(255,255,255,0.10);
+  --glass-line: rgba(255,255,255,0.12);
+  --glass-blur: blur(22px) saturate(160%);
+  --glass-hi: inset 0 1px 0 rgba(255,255,255,0.10);
+  --surface: var(--glass);
+  --raised: rgba(255,255,255,0.10);
+  --line: rgba(255,255,255,0.10);
+  --line-2: rgba(255,255,255,0.14);
+  --card: var(--glass-strong);
+  --radius-l: 28px;
+  --tabbar-h: 88px;
+}
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(circle 260px at 28% 10%, rgba(25,195,180,0.50), transparent 100%),
+    radial-gradient(circle 240px at 96% 40%, rgba(91,91,240,0.55), transparent 100%),
+    radial-gradient(circle 260px at 26% 86%, rgba(209,79,168,0.42), transparent 100%),
+    var(--ground);
+}
+.icon-btn, .hero, .list, .form-list, .amount-box, .segment, .cal, .stat, .panel, .debt, .tabbar, .btn.secondary, .chip:not(.dashed):not([aria-pressed="true"]) {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi);
+}
+.hero { background: var(--glass-strong); }
+.icon-btn.ghost, .row .tools .icon-btn { background: transparent; border: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.pair > div { background: rgba(255,255,255,0.08); }
+.segment button[aria-pressed="true"] { background: rgba(255,255,255,0.16); }
+.frow select option { background: #11152A; }
+
+.tabbar {
+  left: 14px; right: 14px; bottom: max(16px, var(--safe-b)); height: 72px;
+  max-width: 492px; margin: 0 auto; border-radius: 30px;
+  padding: 0 6px; align-items: center;
+}
+.tab-add {
+  margin-top: 0; border-radius: 22px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.12));
+  border: 1px solid rgba(255,255,255,0.35);
+}
+.view { padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + 16px); }
+.toast { bottom: calc(var(--tabbar-h) + var(--safe-b) + 8px); }
+
+.sheet-backdrop { background: rgba(3,5,14,0.55); }
+.sheet {
+  background: rgba(16,20,40,0.78);
+  -webkit-backdrop-filter: blur(30px) saturate(160%); backdrop-filter: blur(30px) saturate(160%);
+  border: 1px solid var(--glass-line); border-bottom: none; box-shadow: var(--glass-hi);
+}
