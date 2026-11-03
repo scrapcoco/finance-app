@@ -541,3 +541,13 @@ body::before {
   -webkit-backdrop-filter: none; backdrop-filter: none;
   padding: 4px 0;
 }
+
+/* Календарь целиком без карточек: «К оплате» и записи выбранного дня тоже лежат прямо на фоне */
+.view[data-screen="calendar"] .stat,
+.view[data-screen="calendar"] > .sec .list {
+  background: none; border: none; box-shadow: none; border-radius: 0;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.view[data-screen="calendar"] .stat { padding: 0; }
+.view[data-screen="calendar"] > .sec .list { padding: 0; }
+.view[data-screen="calendar"] > .sec .list .empty { padding: 6px 0; }
