@@ -123,7 +123,7 @@ a { color: var(--soft); }
   text-decoration: none; color: var(--muted); font-size: 11px; font-weight: 600;
 }
 .tab svg { width: 22px; height: 22px; }
-.tab[aria-current="page"] { color: var(--ink); font-weight: 700; }
+.tab[aria-current="page"] { color: var(--ink); } /* без смены жирности: иначе подпись «прыгает» по ширине */
 .tab-add {
   width: 56px; height: 56px; margin-top: -4px; border-radius: 18px; background: var(--card); color: var(--ink);
   display: flex; align-items: center; justify-content: center;
@@ -495,3 +495,13 @@ body::before {
   .pay-btn:hover { background: rgba(163,185,247,0.24); }
   .day:not([aria-pressed="true"]):hover .n { background: rgba(255,255,255,0.06); }
 }
+
+/* ===== Плавная смена экрана (классы ставит render в router.js) ===== */
+.view { transition: opacity .18s ease; }
+.view.view-leaving { opacity: .45; }
+.view.view-enter { animation: view-in .32s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes view-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .view.view-enter { animation: none; } .view.view-leaving { opacity: 1; } }
+
+/* Подсветка двигается через transform (placeGlow) — отдельный слой на видеокарте, без рывков */
+.tab-glow, .seg-glow { will-change: transform; }
