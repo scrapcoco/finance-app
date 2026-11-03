@@ -67,9 +67,15 @@ def connect():
 
 
 def subscriptions(con):
+    # Одно устройство (endpoint) может остаться записанным за несколькими аккаунтами, например,
+    # если сессия истекла без выхода и на телефоне вошёл другой человек. Напоминания получает
+    # только последний добавивший (rowid растёт при вставке), чтобы не показывать чужие платежи.
+    by_endpoint = {}
+    for r in con.execute('SELECT id, owner, endpoint, p256dh, auth FROM push_subscriptions ORDER BY rowid'):
+        by_endpoint[r['endpoint']] = dict(r)
     subs = {}
-    for r in con.execute('SELECT id, owner, endpoint, p256dh, auth FROM push_subscriptions'):
-        subs.setdefault(r['owner'], []).append(dict(r))
+    for r in by_endpoint.values():
+        subs.setdefault(r['owner'], []).append(r)
     return subs
 
 

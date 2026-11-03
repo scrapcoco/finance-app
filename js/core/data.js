@@ -45,20 +45,27 @@ export async function ensureDefaults() {
   await getCats(true);
 }
 
-export async function markPaid(tx) {
-  await pb.collection('transactions').update(tx.id, { status: 'paid' });
-  let msg = 'Отмечено как оплачено';
+// Плановый платёж только что стал оплаченным: создать следующий повтор и сдвинуть срок долга.
+// tx — запись с датой планового платежа (от неё считается следующая). Возвращает дату следующего повтора или null.
+export async function afterPaid(tx) {
+  let next = null;
   if (tx.repeat && tx.repeat !== 'none') {
-    const next = nextOccurrence(txDay(tx), tx.repeat);
+    next = nextOccurrence(txDay(tx), tx.repeat);
     await pb.collection('transactions').create({
       kind: tx.kind, amount: tx.amount, date: pbDate(next), category: tx.category || '',
       note: tx.note || '', status: 'planned', repeat: tx.repeat, debt: tx.debt || '',
       extra: tx.extra || {}, owner: uid()
     });
-    msg = `Оплачено. Следующий платёж — ${humanDate(next)}`;
   }
   if (tx.debt) await bumpDebtDue(tx.debt, txDay(tx));
-  toast(msg);
+  return next;
+}
+
+export const paidText = (next) => (next ? `Оплачено. Следующий платёж — ${humanDate(next)}` : 'Отмечено как оплачено');
+
+export async function markPaid(tx) {
+  await pb.collection('transactions').update(tx.id, { status: 'paid' });
+  toast(paidText(await afterPaid(tx)));
 }
 
 // Каким типом записи гасится долг: «я должен» — расходом, «мне должны» — доходом (возвратом)

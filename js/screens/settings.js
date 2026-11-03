@@ -3,7 +3,7 @@ import { esc, FIELD_TYPES } from '../core/util.js';
 import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid } from '../core/pb.js';
-import { mountPushBlock } from './push.js';
+import { mountPushBlock, forgetThisDevice } from './push.js';
 import { mountIngestBlock } from './ingest.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
 import { getCats, getFields } from '../core/data.js';
@@ -75,7 +75,9 @@ export async function settingsScreen(route, alive) {
   });
   $view.querySelector('#show-terms').onclick = termsSheet;
   $view.querySelector('#del-account').onclick = () => deleteAccountSheet();
-  $view.querySelector('#logout').onclick = () => {
+  $view.querySelector('#logout').onclick = async (e) => {
+    e.currentTarget.disabled = true;
+    await forgetThisDevice();
     pb.authStore.clear(); state.cache = { cats: null, fields: null, debts: null }; location.hash = '#/'; render();
   };
 }

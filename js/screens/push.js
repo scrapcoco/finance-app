@@ -60,6 +60,16 @@ async function disablePush(sub) {
   await sub.unsubscribe();
 }
 
+// Перед выходом из аккаунта: отвязать это устройство, чтобы следующий, кто войдёт на нём,
+// не получал напоминания прошлого пользователя (и не был подписан без своего согласия)
+export async function forgetThisDevice() {
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    const sub = await reg?.pushManager?.getSubscription();
+    if (sub) await disablePush(sub);
+  } catch (e) { /* не критично: на сервере remind.py оставляет устройство только последнему владельцу */ }
+}
+
 const MSG = {
   'ios-browser': 'Чтобы получать напоминания на iPhone, сначала установи приложение: в Safari нажми «Поделиться» → «На экран „Домой“», затем открой его с иконки и вернись сюда.',
   unsupported: 'Этот браузер не поддерживает уведомления.',

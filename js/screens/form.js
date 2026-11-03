@@ -4,7 +4,7 @@ import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid } from '../core/pb.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
-import { getCats, getFields, getDebts, bumpDebtDue, debtKind } from '../core/data.js';
+import { getCats, getFields, getDebts, bumpDebtDue, debtKind, afterPaid, paidText } from '../core/data.js';
 
 export function viewAdjust(tx) {
   $view.innerHTML = `
@@ -178,7 +178,13 @@ export async function viewForm(tx, route, alive) {
     try {
       if (tx) {
         await pb.collection('transactions').update(tx.id, data);
-        toast('Изменения сохранены');
+        if (tx.status === 'planned' && data.status === 'paid') {
+          // Как «Отметить оплаченным» в календаре: следующий повтор считается от плановой даты,
+          // повтор берётся из формы (выбрал «Не повторять» — серия заканчивается)
+          toast(paidText(await afterPaid({ ...data, date: tx.date, repeat: f.repeat })));
+        } else {
+          toast('Изменения сохранены');
+        }
       } else {
         await pb.collection('transactions').create({ ...data, owner: uid() });
         if (data.debt && data.status === 'paid') await bumpDebtDue(data.debt, f.date);
