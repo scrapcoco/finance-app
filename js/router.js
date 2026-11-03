@@ -2,7 +2,7 @@
 import { esc } from './core/util.js';
 import { ICON } from './core/icons.js';
 import { pb } from './core/pb.js';
-import { $view, $tabbar, errText, closeSheet } from './ui.js';
+import { $view, $tabbar, errText, closeSheet, placeGlow } from './ui.js';
 import { viewLogin } from './screens/login.js';
 import { homeScreen } from './screens/home.js';
 import { addScreen, editScreen } from './screens/form.js';
@@ -32,14 +32,7 @@ export function renderTabbar(active) {
   const cur = $tabbar.querySelector('.tab[aria-current="page"]');
   if (!cur) { glowFrom = null; return; }
   const to = { x: cur.offsetLeft, y: cur.offsetTop, w: cur.offsetWidth, h: cur.offsetHeight };
-  const place = (p) => { glow.style.cssText = `width:${p.w}px;height:${p.h}px;transform:translate(${p.x}px,${p.y}px);opacity:1`; };
-  if (glowFrom) {
-    glow.classList.add('still');
-    place(glowFrom);
-    void glow.offsetWidth; // зафиксировать старое место, чтобы переход сработал
-    glow.classList.remove('still');
-  }
-  place(to);
+  placeGlow(glow, $tabbar.clientWidth, to, glowFrom);
   glowFrom = to;
 }
 

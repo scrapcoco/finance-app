@@ -117,6 +117,27 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $sheetRo
 const GLOW_BOXES = [['.segment', 'button[aria-pressed="true"]'], ['.cal-grid', '.day[aria-pressed="true"] .n']];
 const glowAt = new Map();
 
+// «Резиновая» подсветка: края двигаются отдельно — передний уходит первым и быстрее, задний догоняет,
+// поэтому капсула на миг вытягивается в сторону движения и снова сжимается.
+// boxW — внутренняя ширина контейнера (от неё считается right); p = { x, y, w, h } относительно контейнера.
+// Без from (первое появление) — просто встаёт на место. prefers-reduced-motion гасит переходы в app.css.
+// Передний край стартует резко (ease-out), задний трогается плавно (ease-in-out) — так задний никогда не обгоняет передний
+const LEAD = '.34s cubic-bezier(.22,.9,.3,1)';
+const TRAIL = '.52s cubic-bezier(.6,0,.25,1)';
+export function placeGlow(glow, boxW, to, from) {
+  const set = (p) => {
+    const s = glow.style;
+    s.left = `${p.x}px`; s.right = `${boxW - p.x - p.w}px`; s.top = `${p.y}px`; s.height = `${p.h}px`; s.opacity = '1';
+  };
+  glow.style.transition = 'none';
+  if (!from) { set(to); return; }
+  set(from);
+  void glow.offsetWidth; // зафиксировать старое место, чтобы переход сработал
+  const toRight = to.x > from.x;
+  glow.style.transition = `left ${toRight ? TRAIL : LEAD}, right ${toRight ? LEAD : TRAIL}, top .42s cubic-bezier(.34,1.25,.5,1), height .42s, opacity .2s`;
+  set(to);
+}
+
 function syncGlows() {
   for (const [sel, pick] of GLOW_BOXES) {
     for (const box of document.querySelectorAll(sel)) {
@@ -136,14 +157,7 @@ function syncGlows() {
       const now = glow.at;
       if (now && Math.abs(now.x - to.x) < 0.5 && Math.abs(now.y - to.y) < 0.5 && Math.abs(now.w - to.w) < 0.5) continue;
       const from = now || glowAt.get(key);
-      const place = (p) => { glow.style.cssText = `width:${p.w}px;height:${p.h}px;transform:translate(${p.x}px,${p.y}px);opacity:1`; };
-      if (from) {
-        glow.classList.add('still');
-        place(from);
-        void glow.offsetWidth; // зафиксировать старое место, чтобы переход сработал
-        glow.classList.remove('still');
-      }
-      place(to);
+      placeGlow(glow, box.clientWidth, to, from);
       glow.at = to;
       glowAt.set(key, to);
     }

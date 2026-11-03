@@ -338,9 +338,8 @@ body::before {
   position: absolute; left: 0; top: 0; opacity: 0; pointer-events: none; border-radius: 20px;
   background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.22);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
-  transition: transform .42s cubic-bezier(.34,1.25,.5,1), width .42s, opacity .2s;
+  /* переходы задаёт placeGlow в ui.js: края двигаются отдельно («резиновая» подсветка) */
 }
-.tab-glow.still { transition: none; }
 
 /* Та же плавающая подсветка в переключателях (.segment) и на выбранном дне календаря — см. syncGlows в ui.js */
 .segment, .cal-grid { position: relative; }
@@ -348,9 +347,8 @@ body::before {
 .seg-glow {
   position: absolute; left: 0; top: 0; z-index: 0; opacity: 0; pointer-events: none; border-radius: 11px;
   background: rgba(255,255,255,0.16); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
-  transition: transform .42s cubic-bezier(.34,1.25,.5,1), width .42s, height .42s, opacity .2s;
+  /* переходы — в placeGlow (ui.js) */
 }
-.seg-glow.still { transition: none; }
 .segment button[aria-pressed="true"] { background: transparent; }
 .segment button { transition: color .3s; }
 .cal-grid > .seg-glow { border-radius: 10px; background: var(--ink); box-shadow: none; }
