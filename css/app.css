@@ -415,32 +415,43 @@ body::before {
 
 /* ===== Версия для ПК (от 960px): меню слева, экраны в колонки, окна по центру, наведение мышью ===== */
 @media (min-width: 960px) {
-  :root { --side-w: 232px; }
+  :root { --side-w: 76px; }
   body { padding-left: calc(var(--side-w) + 16px); }
   body:has(#tabbar[hidden]) { padding-left: 0; }
 
-  /* Нижнее меню превращается в боковую панель */
+  /* Нижнее меню превращается в узкую вертикальную полоску из значков (подписи — во всплывающих подсказках) */
   .tabbar, .tabbar[data-mobile-hidden="true"] {
-    display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 4px;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px;
     left: 16px; top: 16px; bottom: 16px; right: auto; width: var(--side-w); height: auto; max-width: none; margin: 0;
-    padding: 18px 12px; border-radius: 28px; overflow-y: auto;
+    padding: 14px 0; border-radius: 28px; overflow: visible;
   }
-  .side-brand { display: block; order: -2; font-size: 19px; font-weight: 800; letter-spacing: -0.01em; padding: 4px 14px 16px; }
+  .side-brand { display: block; order: -2; margin-bottom: 10px; line-height: 0; }
+  .side-brand img { width: 40px; height: 40px; border-radius: 12px; box-shadow: 0 0 0 1px rgba(255,255,255,0.12); }
   .tab-add {
-    order: -1; width: 100%; height: 48px; flex: none; border-radius: 16px; margin-bottom: 14px;
-    justify-content: flex-start; gap: 10px; padding: 0 14px; text-decoration: none;
+    order: -1; width: 48px; height: 48px; flex: none; border-radius: 16px; margin-bottom: 14px; text-decoration: none;
   }
-  .tab-add svg { width: 20px; height: 20px; }
-  .side-label { display: inline; font-size: 14px; font-weight: 700; }
+  .tab-add svg { width: 22px; height: 22px; }
   .tab {
-    width: 100%; height: 46px; flex: none; flex-direction: row; justify-content: flex-start; gap: 12px;
-    padding: 0 14px; font-size: 14px; border-radius: 14px;
+    width: 52px; height: 52px; flex: none; justify-content: center; align-items: center; gap: 0;
+    padding: 0; border-radius: 16px;
   }
-  .tab svg { width: 20px; height: 20px; }
+  .tab svg { width: 22px; height: 22px; }
+  /* Подпись остаётся для экранных читалок, но не видна */
+  .tab > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .tab.desk-only { display: flex; }
-  .tab[href="#/history"] { margin-top: auto; } /* История и Настройки — внизу панели */
-  .tab:hover { color: var(--ink); background: rgba(255,255,255,0.05); }
-  .tab-glow { border-radius: 14px; }
+  .tab[href="#/history"] { margin-top: auto; } /* История и Настройки — внизу полоски */
+  .tab:hover { color: var(--ink); background: rgba(255,255,255,0.06); }
+  .tab-glow { border-radius: 16px; }
+
+  /* Подсказка с названием при наведении (и при фокусе с клавиатуры) — справа от значка */
+  .tab::after, .tab-add::after {
+    content: attr(data-label); position: absolute; left: calc(100% + 14px); top: 50%;
+    transform: translate(-4px, -50%); opacity: 0; pointer-events: none; white-space: nowrap;
+    padding: 7px 11px; border-radius: 10px; font-size: 13px; font-weight: 700; color: var(--ink);
+    background: rgba(16,20,40,0.92); border: 1px solid var(--glass-line); box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+    transition: opacity .15s, transform .2s cubic-bezier(.16,1,.3,1); z-index: 5;
+  }
+  .tab:hover::after, .tab:focus-visible::after, .tab-add:hover::after, .tab-add:focus-visible::after { opacity: 1; transform: translate(0, -50%); }
 
   /* Контент */
   .view, .view.no-tabs { max-width: 1160px; margin: 0 auto; padding: 28px 32px 48px; gap: 20px; }

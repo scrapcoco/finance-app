@@ -30,9 +30,9 @@ let glowFrom = null;
 // поэтому и цвет иконок, и подсветка плывут плавно, даже если переключаться быстро посреди анимации.
 export function renderTabbar(active) {
   if (!$tabbar.querySelector('.tab-glow')) {
-    $tabbar.innerHTML = '<i class="tab-glow" aria-hidden="true"></i><div class="side-brand">Финансы</div>' + TABS.map((t) => t.add
-      ? `<a class="tab-add" href="#/add" aria-label="${t.label}" title="${t.label} (N)">${t.icon}<span class="side-label">${t.label}</span></a>`
-      : `<a class="tab ${t.desk ? 'desk-only' : ''}" href="#/${t.r}" data-r="${t.r}">${t.icon}<span>${t.label}</span></a>`
+    $tabbar.innerHTML = '<i class="tab-glow" aria-hidden="true"></i><div class="side-brand" title="Финансы"><img src="icons/icon.svg" alt="Финансы" width="40" height="40"></div>' + TABS.map((t) => t.add
+      ? `<a class="tab-add" href="#/add" aria-label="${t.label}" data-label="${t.label} · N">${t.icon}<span class="side-label">${t.label}</span></a>`
+      : `<a class="tab ${t.desk ? 'desk-only' : ''}" href="#/${t.r}" data-r="${t.r}" data-label="${t.label}" aria-label="${t.label}">${t.icon}<span>${t.label}</span></a>`
     ).join('');
     glowFrom = null;
   }

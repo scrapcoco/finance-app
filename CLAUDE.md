@@ -39,7 +39,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 
 Новый экран: файл в `screens/` с `export async function xxxScreen(route, alive)` + строка в `ROUTES` в `router.js`.
 
-Версия для ПК (от 960px) — только CSS в конце `app.css`: `#tabbar` становится боковой панелью (пункты `desk: true` в `TABS`
+Версия для ПК (от 960px) — только CSS в конце `app.css`: `#tabbar` становится узкой полоской значков слева (подписи — подсказки из `data-label`; пункты `desk: true` в `TABS`
 видны только там), экраны раскладываются в колонки по `#view[data-screen="<маршрут>"]` (ставит `render`).
 На телефоне меню прячется атрибутом `data-mobile-hidden`, а не `hidden` (`hidden` — только экран входа).
 Подсветка выбранного (`placeGlow` в `ui.js`) тянется по обеим осям; двигается через transform (Web Animations),
