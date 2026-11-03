@@ -560,3 +560,40 @@ body::before {
   .view[data-screen="calendar"] > .cal { border-bottom: none; padding-bottom: 0; }
   .view[data-screen="calendar"] > .sec { align-self: stretch; border-left: 1px solid var(--line); padding-left: 24px; }
 }
+
+/* Отчёты без рамок: плашки сумм, график и категории лежат на фоне, разделены тонкими линиями */
+.view[data-screen="reports"] .stat,
+.view[data-screen="reports"] > .panel {
+  background: none; border: none; box-shadow: none; border-radius: 0;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.view[data-screen="reports"] .stat { padding: 0; }
+.view[data-screen="reports"] > .panel { padding: 0; }
+.view[data-screen="reports"] > .stats,
+.view[data-screen="reports"] > .panel:not(:last-child) { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+@media (min-width: 960px) {
+  /* На ПК график и категории рядом: между ними вертикальная линия */
+  .view[data-screen="reports"] > .panel:not(:last-child) { border-bottom: none; padding-bottom: 0; }
+  .view[data-screen="reports"] > .panel:last-child { align-self: stretch; border-left: 1px solid var(--line); padding-left: 24px; }
+}
+
+/* ===== Без рамок везде: содержимое лежит прямо на фоне, блоки разделены тонкими линиями и заголовками.
+   Рамки остаются только у элементов управления: переключатели, кнопки, чипы, меню, окна. ===== */
+.hero, .list, .panel, .stat, .debt, .form-list, .amount-box, .pair > div, .cal {
+  background: none; border: none; box-shadow: none; border-radius: 0;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.list, .form-list, .panel, .stat, .pair > div { padding: 0; }
+.hero { padding: 0 0 20px; border-bottom: 1px solid var(--line); }
+.amount-box { padding: 4px 0 12px; border-bottom: 1px solid var(--line); }
+.debt { padding: 4px 0 18px; border-bottom: 1px solid var(--line); }
+/* Поля формы: линия и под последним полем, чтобы было видно, где кончается ввод */
+.form-list .frow:last-child { border-bottom: 1px solid var(--line); }
+.list .empty { padding: 8px 0; }
+/* Долги: график отделён от карточек долгов линией */
+.view[data-screen="debts"] > .panel { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+@media (min-width: 960px) {
+  /* Главная на ПК: баланс по своей высоте, без пустоты под ним; между колонками — вертикальная линия */
+  .view[data-screen="home"] { grid-template-rows: auto auto 1fr; }
+  .view[data-screen="home"] > .sec-recent { align-self: stretch; border-left: 1px solid var(--line); padding-left: 24px; }
+}
