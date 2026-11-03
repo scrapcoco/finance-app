@@ -551,3 +551,12 @@ body::before {
 .view[data-screen="calendar"] .stat { padding: 0; }
 .view[data-screen="calendar"] > .sec .list { padding: 0; }
 .view[data-screen="calendar"] > .sec .list .empty { padding: 6px 0; }
+
+/* Календарь: блоки разделены тонкими линиями вместо рамок */
+.view[data-screen="calendar"] > .stats,
+.view[data-screen="calendar"] > .cal { padding-bottom: 16px; border-bottom: 1px solid var(--line); border-radius: 0; }
+@media (min-width: 960px) {
+  /* На ПК календарь и записи дня рядом: под сеткой линии нет, между колонками — вертикальная */
+  .view[data-screen="calendar"] > .cal { border-bottom: none; padding-bottom: 0; }
+  .view[data-screen="calendar"] > .sec { align-self: stretch; border-left: 1px solid var(--line); padding-left: 24px; }
+}
