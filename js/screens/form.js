@@ -94,11 +94,10 @@ export async function viewForm(tx, route, alive) {
         ${f.planned ? `<div class="frow"><label for="rp">Повторять</label><select id="rp">${Object.entries(REPEAT_LABEL).map(([k, v]) => `<option value="${k}" ${f.repeat === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>` : ''}
         ${openDebts.length ? `<div class="frow"><label for="db">${f.kind === 'income' ? 'Возврат долга' : 'Платёж по долгу'}</label><select id="db"><option value="">Нет</option>${openDebts.map((d) => `<option value="${d.id}" ${f.debt === d.id ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></div>` : ''}
       </div>
-      <div class="sec">
+      ${visibleFields.length ? `<div class="sec">
         <div class="sec-head"><div class="field-label">Мои поля</div><a href="#/settings">Настроить</a></div>
-        ${visibleFields.length ? `<div class="form-list">${visibleFields.map(fieldInput).join('')}</div>`
-          : `<div class="list"><div class="empty">Своих полей пока нет. Добавь их в настройках, например «Проект» или «Способ оплаты».</div></div>`}
-      </div>
+        <div class="form-list">${visibleFields.map(fieldInput).join('')}</div>
+      </div>` : ''}
       <div class="error" id="err" role="alert"></div>
       <button class="btn" id="save">${tx ? 'Сохранить изменения' : 'Сохранить'}</button>
       ${tx ? `<button class="btn danger" id="del">Удалить запись</button>` : ''}`;

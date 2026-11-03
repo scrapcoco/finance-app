@@ -1,8 +1,8 @@
 // Календарь платежей
 import { money, MONTHS_GEN, WEEKDAYS, ymd, parseYmd, txDay, today, addMonths, daysIn } from '../core/util.js';
 import { state } from '../core/state.js';
-import { $view, toast, errText, monthSwitch, txRow } from '../ui.js';
-import { txBetween, markPaid } from '../core/data.js';
+import { $view, monthSwitch, txRow, bindPay } from '../ui.js';
+import { txBetween } from '../core/data.js';
 import { render } from '../router.js';
 
 export async function calendarScreen(route, alive) {
@@ -36,7 +36,7 @@ export async function calendarScreen(route, alive) {
   $view.innerHTML = `
     <div class="head"><h1>Платежи</h1>${monthSwitch()}</div>
     <div class="stats">
-      <div class="stat"><div class="k">Ожидается</div><div class="v inc">+${money(expInc)}</div></div>
+      ${expInc ? `<div class="stat"><div class="k">Ожидается</div><div class="v inc">+${money(expInc)}</div></div>` : ''}
       <div class="stat"><div class="k">К оплате</div><div class="v exp">−${money(expExp)}</div></div>
     </div>
     <div class="cal">
@@ -46,18 +46,12 @@ export async function calendarScreen(route, alive) {
     <section class="sec">
       <div class="sec-head"><h2>${sd.getDate()} ${MONTHS_GEN[sd.getMonth()]}, ${WEEKDAYS[sd.getDay()]}</h2>
         <a href="#/add?date=${state.selDay}&back=calendar">Добавить</a></div>
-      ${sel.length ? `<div class="list">${sel.map((t) => `
-        ${txRow(t, { planned: t.status === 'planned' })}
-        ${t.status === 'planned' ? `<div class="frow" style="border-bottom:1px solid var(--line)"><span class="hint">Не оплачено</span><button class="btn small" data-pay="${t.id}">Отметить оплаченным</button></div>` : ''}`).join('')}</div>`
+      ${sel.length ? `<div class="list">${sel.map((t) => txRow(t, { planned: t.status === 'planned', pay: true, back: 'calendar' })).join('')}</div>`
         : `<div class="list"><div class="empty">В этот день записей нет.</div></div>`}
     </section>`;
   $view.querySelector('.month-switch').querySelectorAll('[data-m]').forEach((b) => {
     b.onclick = () => { state.month = addMonths(state.month, Number(b.dataset.m)); render(); };
   });
   $view.querySelectorAll('[data-day]').forEach((b) => b.onclick = () => { state.selDay = b.dataset.day; render(); });
-  $view.querySelectorAll('[data-pay]').forEach((b) => b.onclick = async () => {
-    b.disabled = true;
-    try { await markPaid(sel.find((t) => t.id === b.dataset.pay)); render(); }
-    catch (e) { toast(errText(e)); b.disabled = false; }
-  });
+  bindPay(sel);
 }

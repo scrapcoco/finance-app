@@ -5,7 +5,13 @@ export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&a
 
 export const nf = new Intl.NumberFormat(CFG.LOCALE, { maximumFractionDigits: 2 });
 
-export const money = (v) => `${nf.format(Math.abs(Math.round(v * 100) / 100))} ${CFG.CURRENCY}`;
+const nf2 = new Intl.NumberFormat(CFG.LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// Целые суммы без копеек («2 200 zł»), дробные — всегда с двумя знаками («49,90 zł»)
+export const money = (v) => {
+  const r = Math.abs(Math.round(v * 100) / 100);
+  return `${(Number.isInteger(r) ? nf : nf2).format(r)} ${CFG.CURRENCY}`;
+};
 
 export const signed = (v, kind) => kind === 'adjust' ? `${v < 0 ? '−' : '+'}${money(v)}` : `${kind === 'income' ? '+' : '−'}${money(v)}`;
 
@@ -30,7 +36,7 @@ export const WEEKDAYS = ['воскресенье', 'понедельник', 'в
 
 export const REPEAT_LABEL = { none: 'Не повторять', weekly: 'Каждую неделю', monthly: 'Каждый месяц', yearly: 'Каждый год' };
 
-export const REPEAT_SHORT = { weekly: 'Каждую неделю', monthly: 'Каждый месяц', yearly: 'Каждый год' };
+export const REPEAT_SHORT = { weekly: 'Еженедельно', monthly: 'Ежемесячно', yearly: 'Ежегодно' };
 
 export const FIELD_TYPES = { text: 'Текст', number: 'Число', select: 'Список', date: 'Дата', bool: 'Да/Нет', url: 'Ссылка' };
 

@@ -3,7 +3,7 @@ import { esc, money, net, moneySigned, parseAmount, MONTHS, MONTHS_GEN, ymd, pbD
 import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid, ownerFilter } from '../core/pb.js';
-import { $view, toast, errText, monthSwitch, bindMonthSwitch, txRow, openSheet, closeSheet } from '../ui.js';
+import { $view, toast, errText, monthSwitch, bindMonthSwitch, txRow, bindPay, openSheet, closeSheet } from '../ui.js';
 import { txBetween } from '../core/data.js';
 import { render } from '../router.js';
 
@@ -36,18 +36,18 @@ export async function homeScreen(route, alive) {
   $view.innerHTML = `
     <div class="head">${monthSwitch()}<a class="icon-btn" href="#/settings" aria-label="Настройки">${ICON.gear}</a></div>
     <section class="hero">
-      <div><div class="label">Баланс на сегодня</div><div class="big">${moneySigned(balance)}</div></div>
+      <button type="button" class="bal-btn" id="cash" aria-label="Баланс на сегодня ${moneySigned(balance)}. Изменить остаток">
+        <div class="label">Баланс на сегодня ${ICON.edit}</div><div class="big">${moneySigned(balance)}</div></button>
       <div class="pair">
         <div><div class="k">Доходы</div><div class="v inc">+${money(inc)}</div></div>
         <div><div class="k">Расходы</div><div class="v exp">−${money(exp)}</div></div>
       </div>
       <div class="note">${esc(note)}</div>
-      <button class="btn small secondary" id="cash" style="align-self:flex-start;background:rgba(255,255,255,0.08)">Указать остаток на руках</button>
     </section>
     <section class="sec">
       <div class="sec-head"><h2>${isCur ? 'Ближайшие платежи' : `Платежи за ${monthName}`}</h2><a href="#/calendar">Календарь</a></div>
       ${upcomingItems.length
-        ? `<div class="list">${upcomingItems.map((t) => txRow(t, { planned: true })).join('')}</div>`
+        ? `<div class="list">${upcomingItems.map((t) => txRow(t, { planned: true, pay: true })).join('')}</div>`
         : `<div class="list"><div class="empty">${isCur ? 'Будущих платежей нет. Добавь запись и включи «Будущий платёж».' : 'Неоплаченных платежей в этом месяце нет.'}</div></div>`}
     </section>
     <section class="sec">
@@ -59,19 +59,21 @@ export async function homeScreen(route, alive) {
           : `<div class="list"><div class="empty">Оплаченных записей в этом месяце нет.</div></div>`}
     </section>`;
   bindMonthSwitch();
+  bindPay(upcomingItems);
   $view.querySelector('#cash').onclick = () => cashSheet(balance);
 }
 
 export function cashSheet(balance) {
-  let mode = 'add';
+  // Чаще всего хочется просто сказать «у меня сейчас столько» — этот режим первый
+  let mode = 'set';
   const draw = (s) => {
     const amtVal = s.querySelector('#ca')?.value ?? '';
     const noteVal = s.querySelector('#cn2')?.value ?? '';
     s.innerHTML = `<h2>Остаток на руках</h2>
       <p style="margin:0;color:var(--soft);font-size:14px">Это не доход и не расход: в отчёты не попадает, только меняет баланс. Удобно, чтобы учесть наличные или деньги, которые были до начала учёта.</p>
       <div class="segment" role="group" aria-label="Способ">
-        <button type="button" data-mode="add" aria-pressed="${mode === 'add'}">Добавить к балансу</button>
         <button type="button" data-mode="set" aria-pressed="${mode === 'set'}">Указать точно</button>
+        <button type="button" data-mode="add" aria-pressed="${mode === 'add'}">Добавить к балансу</button>
       </div>
       <div class="amount-box"><label for="ca">${mode === 'add' ? 'Сколько добавить' : 'Сколько у меня сейчас всего'}</label>
         <div class="line"><input id="ca" inputmode="decimal" autocomplete="off" placeholder="0" value="${esc(amtVal)}"><div class="cur">${esc(CFG.CURRENCY)}</div></div></div>

@@ -3,6 +3,7 @@ import { esc, signed, MONTHS, MONTHS_SHORT, REPEAT_SHORT, parseYmd, txDay, addMo
 import { ICON } from './core/icons.js';
 import { state } from './core/state.js';
 import { render } from './router.js';
+import { markPaid } from './core/data.js';
 
 export const $view = document.getElementById('view');
 
@@ -54,8 +55,10 @@ export function txRow(t, opts = {}) {
   const title = t.kind === 'adjust' ? (t.note || 'Остаток на руках') : (t.note || cat || (t.kind === 'income' ? 'Доход' : 'Расход'));
   const metaParts = [];
   if (opts.planned) {
-    if (t.repeat && t.repeat !== 'none') metaParts.push(REPEAT_SHORT[t.repeat]);
-    metaParts.push(whenLabel(txDay(t)));
+    // Сначала срок, потом повтор: если строка не влезет, обрежется менее важное
+    const when = whenLabel(txDay(t));
+    metaParts.push(when[0].toUpperCase() + when.slice(1));
+    if (t.repeat && t.repeat !== 'none') metaParts.push(REPEAT_SHORT[t.repeat].toLowerCase());
   } else {
     metaParts.push(shortDate(txDay(t)));
     if (cat && t.note) metaParts.push(cat);
@@ -64,11 +67,25 @@ export function txRow(t, opts = {}) {
   const lead = opts.planned
     ? `<div class="datebox ${daysUntil(txDay(t)) < 0 ? 'overdue' : ''}"><b>${d.getDate()}</b><span>${MONTHS_SHORT[d.getMonth()]}</span></div>`
     : '';
-  return `<a class="row" href="#/edit/${t.id}${opts.back ? `?back=${opts.back}` : ''}">
-    ${lead}
+  const href = `#/edit/${t.id}${opts.back ? `?back=${opts.back}` : ''}`;
+  const inner = `${lead}
     <div class="main"><div class="name">${esc(title)}</div><div class="meta">${esc(metaParts.join(', '))}</div></div>
-    <div class="amt ${t.kind === 'income' ? 'inc' : t.kind === 'expense' ? 'exp' : ''}">${signed(t.amount, t.kind)}</div>
-  </a>`;
+    <div class="amt ${t.kind === 'income' ? 'inc' : t.kind === 'expense' ? 'exp' : ''}">${signed(t.amount, t.kind)}</div>`;
+  // С кнопкой «Оплачено» строка — не ссылка целиком (кнопку нельзя вкладывать в <a>)
+  if (opts.pay && t.status === 'planned') {
+    return `<div class="row pay-row"><a class="row-link" href="${href}">${inner}</a>
+      <button type="button" class="pay-btn" data-pay="${t.id}" aria-label="Отметить оплаченным: ${esc(title)}">${ICON.check}</button></div>`;
+  }
+  return `<a class="row" href="${href}">${inner}</a>`;
+}
+
+// Кнопки «Оплачено» (data-pay) в строках txRow; items — записи, которые сейчас на экране
+export function bindPay(items) {
+  $view.querySelectorAll('[data-pay]').forEach((b) => b.onclick = async () => {
+    b.disabled = true;
+    try { await markPaid(items.find((t) => t.id === b.dataset.pay)); render(); }
+    catch (e) { toast(errText(e)); b.disabled = false; }
+  });
 }
 
 export function openSheet(html, bind) {
