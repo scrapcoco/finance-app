@@ -109,6 +109,49 @@ export function openSheet(html, bind) {
 
 export function closeSheet() { $sheetRoot.innerHTML = ''; }
 
+// ===== Отклик на нажатие: мягкий «тик» и лёгкое «вдавливание» с пружинкой =====
+// Звук синтезируется Web Audio (без файлов), громкость тихая. Выключается в Настройках → «Звук нажатий».
+// На iPhone звук молчит, если включён беззвучный режим, — так устроен Safari.
+const SOUND_KEY = 'clickSound';
+export const soundOn = () => { try { return localStorage.getItem(SOUND_KEY) !== 'off'; } catch (e) { return true; } };
+export const setSound = (on) => { try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch (e) { /* приватный режим */ } };
+let audio = null;
+function tick(strong) {
+  if (!soundOn()) return;
+  try {
+    audio ||= new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+    const t = audio.currentTime, osc = audio.createOscillator(), gain = audio.createGain();
+    osc.type = 'sine';
+    // Главные действия — ниже и плотнее, остальное — светлый короткий щелчок
+    osc.frequency.setValueAtTime(strong ? 880 : 1500, t);
+    osc.frequency.exponentialRampToValueAtTime(strong ? 420 : 900, t + 0.045);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(strong ? 0.09 : 0.05, t + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + (strong ? 0.09 : 0.06));
+    osc.connect(gain).connect(audio.destination);
+    osc.start(t); osc.stop(t + 0.1);
+  } catch (e) { /* без звука — не страшно */ }
+}
+const PRESSABLE = 'button, a, .chip';
+const STRONG = '.pay-btn, .tab-add, .btn:not(.secondary):not(.danger)';
+const SPRING = 'cubic-bezier(.34,1.56,.64,1)';
+document.addEventListener('pointerdown', (e) => {
+  const el = e.target.closest(PRESSABLE);
+  if (!el || el.disabled || el.getAttribute('aria-disabled') === 'true') return;
+  tick(el.matches(STRONG));
+  if (reduceMotion.matches) return;
+  // Строки списков — едва заметно, кнопки — сильнее. Свойство scale не мешает transform самих элементов
+  const depth = el.matches('a.row, .row-link') ? 0.985 : el.matches('.day') ? 0.9 : 0.94;
+  const press = el.animate([{ scale: '1' }, { scale: String(depth) }], { duration: 90, easing: 'ease-out', fill: 'forwards' });
+  const release = () => {
+    el.removeEventListener('pointerup', release); el.removeEventListener('pointercancel', release); el.removeEventListener('pointerleave', release);
+    press.cancel();
+    el.animate([{ scale: String(depth) }, { scale: '1' }], { duration: 320, easing: SPRING });
+  };
+  el.addEventListener('pointerup', release); el.addEventListener('pointercancel', release); el.addEventListener('pointerleave', release);
+}, { passive: true });
+
 // Клавиатура: Esc — закрыть окно; N — новая запись; ← / → — месяц (или день/неделя в отчётах).
 // Не мешаем вводу текста и сочетаниям с Ctrl/Cmd/Alt.
 document.addEventListener('keydown', (e) => {

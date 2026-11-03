@@ -5,7 +5,7 @@ import { state } from '../core/state.js';
 import { CFG, pb, uid, ownerFilter } from '../core/pb.js';
 import { mountPushBlock, forgetThisDevice } from './push.js';
 import { mountIngestBlock } from './ingest.js';
-import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
+import { $view, toast, errText, openSheet, closeSheet, soundOn, setSound } from '../ui.js';
 import { getCats, getFields, getDebts } from '../core/data.js';
 import { render, goHome } from '../router.js';
 import { COPYRIGHT, termsSheet } from './login.js';
@@ -42,6 +42,10 @@ export async function settingsScreen(route, alive) {
     </section>
     <section class="sec"><div class="sec-head"><h2>Категории</h2></div>${catBlock('expense', 'Расходы')}${catBlock('income', 'Доходы')}</section>
     <section class="sec">
+      <div class="sec-head"><h2>Интерфейс</h2></div>
+      <div class="form-list"><div class="frow"><label id="snd-l">Звук нажатий</label><button type="button" class="switch" id="snd" role="switch" aria-labelledby="snd-l" aria-checked="${soundOn()}"></button></div></div>
+    </section>
+    <section class="sec">
       <div class="sec-head"><h2>Аккаунт</h2></div>
       <div class="list"><div class="row" style="min-height:52px"><div class="main"><div class="name">${esc(pb.authStore.record?.email || '')}</div><div class="meta">Сервер: ${esc(CFG.PB_URL.replace('https://', ''))}</div></div></div></div>
       <button class="btn secondary" id="export-csv">Скачать все записи (CSV)</button>
@@ -76,6 +80,9 @@ export async function settingsScreen(route, alive) {
       state.cache.cats = null; toast('Категория удалена'); render();
     } catch (e) { toast(errText(e)); }
   });
+  $view.querySelector('#snd').onclick = (e) => {
+    const on = !soundOn(); setSound(on); e.currentTarget.setAttribute('aria-checked', String(on));
+  };
   $view.querySelector('#export-csv').onclick = (e) => exportCsv(e.currentTarget);
   $view.querySelector('#show-terms').onclick = termsSheet;
   $view.querySelector('#del-account').onclick = () => deleteAccountSheet();
