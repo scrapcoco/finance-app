@@ -109,7 +109,19 @@ export function openSheet(html, bind) {
 
 export function closeSheet() { $sheetRoot.innerHTML = ''; }
 
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $sheetRoot.innerHTML) closeSheet(); });
+// Клавиатура: Esc — закрыть окно; N — новая запись; ← / → — месяц (или день/неделя в отчётах).
+// Не мешаем вводу текста и сочетаниям с Ctrl/Cmd/Alt.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $sheetRoot.innerHTML) { closeSheet(); return; }
+  if (e.ctrlKey || e.metaKey || e.altKey || $sheetRoot.innerHTML || !$tabbar.querySelector('.tab')) return;
+  if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+  if (e.code === 'KeyN') { e.preventDefault(); location.hash = '#/add'; return; }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    const d = e.key === 'ArrowLeft' ? '-1' : '1';
+    const b = $view.querySelector(`.head [data-m="${d}"], .head [data-shift="${d}"]`);
+    if (b && !b.disabled) { e.preventDefault(); b.click(); }
+  }
+});
 
 // Плавающая подсветка: выбранная кнопка в любом .segment и выбранный день календаря.
 // Экраны перерисовываются целиком, поэтому прошлое место подсветки помним по aria-label переключателя
@@ -119,22 +131,27 @@ const glowAt = new Map();
 
 // «Резиновая» подсветка: края двигаются отдельно — передний уходит первым и быстрее, задний догоняет,
 // поэтому капсула на миг вытягивается в сторону движения и снова сжимается.
-// boxW — внутренняя ширина контейнера (от неё считается right); p = { x, y, w, h } относительно контейнера.
+// box = { w, h } — внутренние размеры контейнера (от них считаются right/bottom); p = { x, y, w, h } относительно контейнера.
+// Тянется и по горизонтали (нижнее меню, переключатели), и по вертикали (боковая панель на ПК, строки календаря).
 // Без from (первое появление) — просто встаёт на место. prefers-reduced-motion гасит переходы в app.css.
 // Передний край стартует резко (ease-out), задний трогается плавно (ease-in-out) — так задний никогда не обгоняет передний
 const LEAD = '.34s cubic-bezier(.22,.9,.3,1)';
 const TRAIL = '.52s cubic-bezier(.6,0,.25,1)';
-export function placeGlow(glow, boxW, to, from) {
+export function placeGlow(glow, box, to, from) {
   const set = (p) => {
     const s = glow.style;
-    s.left = `${p.x}px`; s.right = `${boxW - p.x - p.w}px`; s.top = `${p.y}px`; s.height = `${p.h}px`; s.opacity = '1';
+    s.left = `${p.x}px`; s.right = `${box.w - p.x - p.w}px`;
+    s.top = `${p.y}px`; s.bottom = `${box.h - p.y - p.h}px`; s.opacity = '1';
   };
   glow.style.transition = 'none';
   if (!from) { set(to); return; }
   set(from);
   void glow.offsetWidth; // зафиксировать старое место, чтобы переход сработал
-  const toRight = to.x > from.x;
-  glow.style.transition = `left ${toRight ? TRAIL : LEAD}, right ${toRight ? LEAD : TRAIL}, top .42s cubic-bezier(.34,1.25,.5,1), height .42s, opacity .2s`;
+  const right = to.x > from.x, down = to.y > from.y;
+  glow.style.transition = [
+    `left ${right ? TRAIL : LEAD}`, `right ${right ? LEAD : TRAIL}`,
+    `top ${down ? TRAIL : LEAD}`, `bottom ${down ? LEAD : TRAIL}`, 'opacity .2s'
+  ].join(', ');
   set(to);
 }
 
@@ -157,7 +174,7 @@ function syncGlows() {
       const now = glow.at;
       if (now && Math.abs(now.x - to.x) < 0.5 && Math.abs(now.y - to.y) < 0.5 && Math.abs(now.w - to.w) < 0.5) continue;
       const from = now || glowAt.get(key);
-      placeGlow(glow, box.clientWidth, to, from);
+      placeGlow(glow, { w: box.clientWidth, h: box.clientHeight }, to, from);
       glow.at = to;
       glowAt.set(key, to);
     }

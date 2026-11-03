@@ -12,29 +12,40 @@ import { reportsScreen } from './screens/reports.js';
 import { debtsScreen } from './screens/debts.js';
 import { settingsScreen } from './screens/settings.js';
 
+// desk: true — пункт только в боковой панели на ПК (на телефоне туда ведут ссылки с экранов)
 export const TABS = [
   { r: '', label: 'Главная', icon: ICON.home },
   { r: 'calendar', label: 'Платежи', icon: ICON.cal },
-  { r: 'add', label: '', icon: ICON.plus, add: true },
+  { r: 'add', label: 'Новая запись', icon: ICON.plus, add: true },
   { r: 'reports', label: 'Отчёты', icon: ICON.chart },
-  { r: 'debts', label: 'Долги', icon: ICON.debt }
+  { r: 'debts', label: 'Долги', icon: ICON.debt },
+  { r: 'history', label: 'История', icon: ICON.list, desk: true },
+  { r: 'settings', label: 'Настройки', icon: ICON.gear, desk: true }
 ];
 
 // Где стояла подсветка активного раздела до перерисовки — от этого места она переплывает к новому
 let glowFrom = null;
 
 export function renderTabbar(active) {
-  $tabbar.innerHTML = '<i class="tab-glow" aria-hidden="true"></i>' + TABS.map((t) => t.add
-    ? `<a class="tab-add" href="#/add" aria-label="Добавить запись">${t.icon}</a>`
-    : `<a class="tab" href="#/${t.r}" ${t.r === active ? 'aria-current="page"' : ''}>${t.icon}${t.label}</a>`
+  $tabbar.innerHTML = '<i class="tab-glow" aria-hidden="true"></i><div class="side-brand">Финансы</div>' + TABS.map((t) => t.add
+    ? `<a class="tab-add" href="#/add" aria-label="${t.label}" title="${t.label} (N)">${t.icon}<span class="side-label">${t.label}</span></a>`
+    : `<a class="tab ${t.desk ? 'desk-only' : ''}" href="#/${t.r}" ${t.r === active ? 'aria-current="page"' : ''}>${t.icon}<span>${t.label}</span></a>`
   ).join('');
   const glow = $tabbar.querySelector('.tab-glow');
   const cur = $tabbar.querySelector('.tab[aria-current="page"]');
-  if (!cur) { glowFrom = null; return; }
+  if (!cur) { glow.style.opacity = '0'; glowFrom = null; return; }
+  if (!cur.offsetWidth) return; // меню скрыто (форма на телефоне) — прошлое место подсветки помним
   const to = { x: cur.offsetLeft, y: cur.offsetTop, w: cur.offsetWidth, h: cur.offsetHeight };
-  placeGlow(glow, $tabbar.clientWidth, to, glowFrom);
+  placeGlow(glow, { w: $tabbar.clientWidth, h: $tabbar.clientHeight }, to, glowFrom);
   glowFrom = to;
 }
+
+// Телефон/ПК поменялись местами (повернули экран, растянули окно) — меню перестраивается, подсветку ставим заново
+matchMedia('(min-width: 960px)').addEventListener('change', () => {
+  if (!pb.authStore.isValid) return;
+  glowFrom = null;
+  renderTabbar(parseRoute().name);
+});
 
 export function parseRoute() {
   const h = location.hash.replace(/^#\/?/, '');
@@ -59,13 +70,17 @@ let renderSeq = 0;
 export async function render() {
   closeSheet();
   const seq = ++renderSeq;
-  if (!pb.authStore.isValid) { $tabbar.hidden = true; return viewLogin(); }
+  if (!pb.authStore.isValid) { $tabbar.hidden = true; $view.dataset.screen = 'login'; return viewLogin(); }
   const route = parseRoute();
   const fn = ROUTES[route.name] || ROUTES[''];
+  // data-screen — по нему CSS раскладывает экран на ПК в колонки
+  $view.dataset.screen = ROUTES[route.name] ? (route.name || 'home') : 'home';
+  // На телефоне в форме и настройках нижнего меню нет; на ПК боковая панель видна всегда (см. app.css)
   const withTabs = !['add', 'edit', 'settings'].includes(route.name);
-  $tabbar.hidden = !withTabs;
+  $tabbar.hidden = false;
+  $tabbar.dataset.mobileHidden = String(!withTabs);
   $view.classList.toggle('no-tabs', !withTabs);
-  if (withTabs) renderTabbar(route.name);
+  renderTabbar(route.name);
   if (!$view.innerHTML.trim()) $view.innerHTML = '<div class="loading">Загрузка…</div>';
   try {
     await fn(route, () => seq === renderSeq);

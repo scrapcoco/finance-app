@@ -405,3 +405,93 @@ body::before {
   -webkit-backdrop-filter: blur(30px) saturate(160%); backdrop-filter: blur(30px) saturate(160%);
   border: 1px solid var(--glass-line); border-bottom: none; box-shadow: var(--glass-hi);
 }
+
+/* ===== Пункты только для ПК, плашки «±% к прошлому месяцу» ===== */
+.desk-only, .side-brand, .side-label { display: none; }
+.tabbar[data-mobile-hidden="true"] { display: none; }
+.delta { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; color: var(--muted); }
+.delta.good { color: var(--inc); }
+.delta.bad { color: var(--danger); }
+
+/* ===== Версия для ПК (от 960px): меню слева, экраны в колонки, окна по центру, наведение мышью ===== */
+@media (min-width: 960px) {
+  :root { --side-w: 232px; }
+  body { padding-left: calc(var(--side-w) + 16px); }
+  body:has(#tabbar[hidden]) { padding-left: 0; }
+
+  /* Нижнее меню превращается в боковую панель */
+  .tabbar, .tabbar[data-mobile-hidden="true"] {
+    display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 4px;
+    left: 16px; top: 16px; bottom: 16px; right: auto; width: var(--side-w); height: auto; max-width: none; margin: 0;
+    padding: 18px 12px; border-radius: 28px; overflow-y: auto;
+  }
+  .side-brand { display: block; order: -2; font-size: 19px; font-weight: 800; letter-spacing: -0.01em; padding: 4px 14px 16px; }
+  .tab-add {
+    order: -1; width: 100%; height: 48px; flex: none; border-radius: 16px; margin-bottom: 14px;
+    justify-content: flex-start; gap: 10px; padding: 0 14px; text-decoration: none;
+  }
+  .tab-add svg { width: 20px; height: 20px; }
+  .side-label { display: inline; font-size: 14px; font-weight: 700; }
+  .tab {
+    width: 100%; height: 46px; flex: none; flex-direction: row; justify-content: flex-start; gap: 12px;
+    padding: 0 14px; font-size: 14px; border-radius: 14px;
+  }
+  .tab svg { width: 20px; height: 20px; }
+  .tab.desk-only { display: flex; }
+  .tab[href="#/history"] { margin-top: auto; } /* История и Настройки — внизу панели */
+  .tab:hover { color: var(--ink); background: rgba(255,255,255,0.05); }
+  .tab-glow { border-radius: 14px; }
+
+  /* Контент */
+  .view, .view.no-tabs { max-width: 1160px; margin: 0 auto; padding: 28px 32px 48px; gap: 20px; }
+  .view[data-screen="add"], .view[data-screen="edit"], .view[data-screen="settings"] { max-width: 640px; }
+  .view[data-screen="history"] { max-width: 900px; }
+  .view[data-screen="login"] { max-width: 440px; }
+  .head h1 { font-size: 28px; }
+  .hero .big { font-size: 44px; }
+
+  /* Главная: слева баланс и ближайшие платежи, справа последние записи */
+  .view[data-screen="home"] { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); column-gap: 24px; align-items: start; }
+  .view[data-screen="home"] > .head { grid-column: 1 / -1; }
+  .view[data-screen="home"] > .hero, .view[data-screen="home"] > .sec-up { grid-column: 1; }
+  .view[data-screen="home"] > .sec-recent { grid-column: 2; grid-row: 2 / span 2; }
+
+  /* Платежи: слева месяц, справа выбранный день */
+  .view[data-screen="calendar"] { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); column-gap: 24px; align-items: start; }
+  .view[data-screen="calendar"] > .head { grid-column: 1 / -1; }
+  .view[data-screen="calendar"] > .stats, .view[data-screen="calendar"] > .cal { grid-column: 1; }
+  .view[data-screen="calendar"] > .sec { grid-column: 2; grid-row: 2 / span 2; }
+  .view[data-screen="calendar"] .day { height: 60px; }
+  .view[data-screen="calendar"] .day .n { width: 40px; height: 40px; font-size: 15px; }
+
+  /* Отчёты: график и категории рядом */
+  .view[data-screen="reports"] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; align-items: start; }
+  .view[data-screen="reports"] > .head, .view[data-screen="reports"] > .stats { grid-column: 1 / -1; }
+  .view[data-screen="reports"] > .segment { grid-column: 1; max-width: 420px; }
+  .view[data-screen="reports"] .bars { height: 220px; }
+  .view[data-screen="reports"] .bar { width: 18px; border-radius: 6px; }
+  .view[data-screen="home"] > .head > a.icon-btn[href="#/settings"] { display: none; } /* «Настройки» есть в панели */
+
+  /* Долги: сводка и график рядом, карточки долгов в две колонки */
+  .view[data-screen="debts"] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; align-items: start; }
+  .view[data-screen="debts"] > .head, .view[data-screen="debts"] > .list { grid-column: 1 / -1; }
+  .view[data-screen="debts"] > .segment { grid-column: 1; max-width: 420px; }
+  .view[data-screen="debts"] > .hero { grid-column: 1; align-self: stretch; }
+  .view[data-screen="debts"] > .panel { grid-column: 2; }
+  .view[data-screen="debts"] > .sec { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+
+  /* Окна — по центру экрана, а не выезжают снизу */
+  .sheet-backdrop { align-items: center; padding: 24px; }
+  .sheet { max-width: 480px; max-height: 85vh; border-radius: 24px; border-bottom: 1px solid var(--glass-line); }
+  .toast { bottom: 24px; left: calc(50% + (var(--side-w) + 16px) / 2); }
+
+  /* Наведение мышью */
+  .list { overflow: hidden; }
+  .list > a.row, .list > .pay-row { margin: 0 -16px; padding-left: 16px; padding-right: 16px; width: auto; transition: background .15s; }
+  .list > a.row:hover, .list > .pay-row:hover { background: rgba(255,255,255,0.045); }
+  .btn:hover:not(:disabled) { filter: brightness(1.08); }
+  .icon-btn:hover { background: rgba(255,255,255,0.12); }
+  .chip:hover { border-color: rgba(255,255,255,0.35); }
+  .pay-btn:hover { background: rgba(163,185,247,0.24); }
+  .day:not([aria-pressed="true"]):hover .n { background: rgba(255,255,255,0.06); }
+}
