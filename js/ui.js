@@ -15,11 +15,21 @@ export const $toast = document.getElementById('toast');
 
 let toastTimer;
 
-export function toast(msg) {
+// action — необязательная кнопка в тосте: { label, run } (например, «Отменить»); такой тост висит дольше
+export function toast(msg, action) {
   $toast.textContent = msg;
+  if (action) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'toast-act'; b.textContent = action.label;
+    b.onclick = async () => {
+      clearTimeout(toastTimer); $toast.hidden = true;
+      try { await action.run(); } catch (e) { toast(errText(e)); }
+    };
+    $toast.append(b);
+  }
   $toast.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { $toast.hidden = true; }, 2600);
+  toastTimer = setTimeout(() => { $toast.hidden = true; }, action ? 6000 : 2600);
 }
 
 export function errText(e) {

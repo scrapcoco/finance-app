@@ -1,5 +1,6 @@
 // Загрузка справочников и операции с записями
-import { ymd, parseYmd, pbDate, txDay, shiftMonthKeepDay, nextOccurrence, dayOf, humanDate, daysUntil } from './util.js';
+import { ymd, parseYmd, pbDate, txDay, shiftMonthKeepDay, nextOccurrence, dayOf, humanDate, daysUntil, net } from './util.js';
+import { render } from '../router.js';
 import { state } from './state.js';
 import { pb, uid, ownerFilter } from './pb.js';
 import { toast } from '../ui.js';
@@ -46,41 +47,69 @@ export async function ensureDefaults() {
 }
 
 // Плановый платёж только что стал оплаченным: создать следующий повтор и сдвинуть срок долга.
-// tx — запись с датой планового платежа (от неё считается следующая). Возвращает дату следующего повтора или null.
+// tx — запись с датой планового платежа (от неё считается следующая).
+// Возвращает, что изменилось (для «Отменить»): { next — дата следующего повтора или null, createdId, prevDue }.
 export async function afterPaid(tx) {
-  let next = null;
+  const r = { next: null, createdId: null, prevDue: null };
   if (tx.repeat && tx.repeat !== 'none') {
     // У старых записей repeat_day нет — тогда день берётся из даты, как раньше
     const day = tx.repeat_day || dayOf(txDay(tx));
-    next = nextOccurrence(txDay(tx), tx.repeat, day);
-    await pb.collection('transactions').create({
-      kind: tx.kind, amount: tx.amount, date: pbDate(next), category: tx.category || '',
+    r.next = nextOccurrence(txDay(tx), tx.repeat, day);
+    const created = await pb.collection('transactions').create({
+      kind: tx.kind, amount: tx.amount, date: pbDate(r.next), category: tx.category || '',
       note: tx.note || '', status: 'planned', repeat: tx.repeat, repeat_day: day, debt: tx.debt || '',
       extra: tx.extra || {}, owner: uid()
     });
+    r.createdId = created.id;
   }
-  if (tx.debt) await bumpDebtDue(tx.debt, txDay(tx));
-  return next;
+  if (tx.debt) r.prevDue = await bumpDebtDue(tx.debt, txDay(tx));
+  return r;
 }
 
 export const paidText = (next) => (next ? `Оплачено. Следующий платёж — ${humanDate(next)}` : 'Отмечено как оплачено');
 
+// Отметить оплаченным (кнопки ✓ и календарь). В тосте — «Отменить»: вернуть как было, если нажал по ошибке.
 export async function markPaid(tx) {
   await pb.collection('transactions').update(tx.id, { status: 'paid' });
-  toast(paidText(await afterPaid(tx)));
+  const r = await afterPaid(tx);
+  toast(paidText(r.next), { label: 'Отменить', run: () => undoPaid(tx, r) });
+}
+
+async function undoPaid(tx, r) {
+  if (r.createdId) await pb.collection('transactions').delete(r.createdId);
+  await pb.collection('transactions').update(tx.id, { status: 'planned' });
+  if (r.prevDue) { await pb.collection('debts').update(tx.debt, { next_due: r.prevDue }); state.cache.debts = null; }
+  toast('Отменено: платёж снова не оплачен');
+  render();
+}
+
+// Баланс считает база (view-коллекция balances, server/1793100000_balances_view.js) — одна строка вместо всей истории.
+// Пока коллекции нет (404) — по-старому: сумма всех оплаченных записей.
+export async function getBalance() {
+  try {
+    const res = await pb.collection('balances').getList(1, 1, { filter: pb.filter('id = {:o}', { o: uid() }) });
+    return Number(res.items[0]?.balance) || 0;
+  } catch (e) {
+    if (e?.status !== 404) throw e;
+    const all = await pb.collection('transactions').getFullList({ filter: `${ownerFilter()} && status = 'paid'`, fields: 'kind,amount' });
+    return Math.round(all.reduce((s, t) => s + net(t), 0) * 100) / 100;
+  }
 }
 
 // Каким типом записи гасится долг: «я должен» — расходом, «мне должны» — доходом (возвратом)
 export const debtKind = (d) => (d?.direction === 'lent' ? 'income' : 'expense');
 
+// Сдвигает срок долга на месяц, если оплачен ближайший платёж. Возвращает прежний next_due (если сдвинул) или null.
 export async function bumpDebtDue(debtId, payDay) {
   try {
     const d = await pb.collection('debts').getOne(debtId);
-    if (!d.next_due) return;
+    if (!d.next_due) return null;
     const due = d.next_due.slice(0, 10);
     if (daysUntil(due) - daysUntil(payDay) <= 20) {
       await pb.collection('debts').update(debtId, { next_due: pbDate(ymd(shiftMonthKeepDay(parseYmd(due), 1))) });
       state.cache.debts = null;
+      return d.next_due;
     }
   } catch (e) { /* not critical */ }
+  return null;
 }

@@ -9,6 +9,7 @@ export const state = {
   repDay: null,
   repWeek: null,
   histKind: 'all',
+  histQuery: '',
   debtDir: 'owe',
   cache: { cats: null, fields: null, debts: null }
 };

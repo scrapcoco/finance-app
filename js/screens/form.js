@@ -185,7 +185,7 @@ export async function viewForm(tx, route, alive) {
         if (tx.status === 'planned' && data.status === 'paid') {
           // Как «Отметить оплаченным» в календаре: следующий повтор считается от плановой даты,
           // повтор берётся из формы (выбрал «Не повторять» — серия заканчивается)
-          toast(paidText(await afterPaid({ ...data, date: tx.date, repeat: f.repeat, repeat_day: tx.repeat_day || dayOf(txDay(tx)) })));
+          toast(paidText((await afterPaid({ ...data, date: tx.date, repeat: f.repeat, repeat_day: tx.repeat_day || dayOf(txDay(tx)) })).next));
         } else {
           toast('Изменения сохранены');
         }

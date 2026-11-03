@@ -62,6 +62,18 @@ routerAdd("POST", "/api/finance/expense", (e) => {
   const local = new Date(now.getTime() + (summer ? 2 : 1) * 3600 * 1000);
   const ymd = local.toISOString().slice(0, 10);
 
+  const note = (merchant || "Apple Pay") + (foreign ? " (" + rawAmount.slice(0, 30) + ")" : "");
+  const shown = amount.toFixed(2).replace(".", ",") + " zł";
+
+  // Быстрая команда может повторить запрос (плохая сеть, двойной запуск) — такой же расход за 2 минуты не дублируем
+  const since = new Date(now.getTime() - 2 * 60 * 1000).toISOString().replace("T", " ");
+  const dupes = e.app.findRecordsByFilter("transactions",
+    "owner = {:o} && kind = 'expense' && amount = {:a} && note = {:n} && created >= {:t}",
+    "-created", 1, 0, { o: user.id, a: amount, n: note, t: since });
+  if (dupes.length) {
+    return e.json(200, { ok: true, id: dupes[0].id, duplicate: true, text: "Уже записано: " + shown + (merchant ? " " + merchant : "") });
+  }
+
   const tx = new Record(e.app.findCollectionByNameOrId("transactions"));
   tx.set("owner", user.id);
   tx.set("kind", "expense");
@@ -69,9 +81,8 @@ routerAdd("POST", "/api/finance/expense", (e) => {
   tx.set("repeat", "none");
   tx.set("amount", amount);
   tx.set("date", ymd + " 12:00:00.000Z");
-  tx.set("note", (merchant || "Apple Pay") + (foreign ? " (" + rawAmount.slice(0, 30) + ")" : ""));
+  tx.set("note", note);
   e.app.save(tx);
 
-  const shown = amount.toFixed(2).replace(".", ",") + " zł";
   return e.json(200, { ok: true, id: tx.id, text: "Записано: " + shown + (merchant ? " " + merchant : "") });
 });

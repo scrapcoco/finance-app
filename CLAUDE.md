@@ -53,12 +53,15 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 - `custom_fields`: `label`, `field_type` text|number|select|date|bool|url, `options`, `sort`, `hidden`
 - `debts`: `name`, `total`, `monthly_payment`, `next_due`, `note`, `closed`, `direction` owe|lent (пусто = owe)
 - `push_subscriptions`: `endpoint`, `p256dh`, `auth`, `device`
+- `balances` (view, только чтение): `id` = id пользователя, `balance` — сумма оплаченных; клиент читает через `getBalance()`
+  в `core/data.js` (при 404 — старый подсчёт по всем записям)
 - `users`: + `invite`, `terms_version`, `ingest_key_hash` (скрытое, sha256 ключа для iPhone)
 
 `adjust` меняет баланс, но не попадает в доходы, расходы и отчёты. Сумма платежа по долгу считается
 из оплаченных `transactions` с этим `debt`: «я должен» гасится расходами, «мне должны» — доходами (`debtKind` в `core/data.js`). Рассылка push — `server/remind.py` (systemd-таймер, 9:00); см. `server/README.md`.
 Свои эндпоинты PocketBase — `server/pb_hooks/finance_ingest.pb.js`: `GET/POST/DELETE /api/finance/key` (ключ),
-`POST /api/finance/expense` (заголовок `X-Finance-Key`, тело `{amount, merchant}` → оплаченный расход).
+`POST /api/finance/expense` (заголовок `X-Finance-Key`, тело `{amount, merchant}` → оплаченный расход;
+такой же расход за 2 минуты не дублируется — ответ `duplicate: true`).
 
 ## Правила
 

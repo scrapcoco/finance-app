@@ -386,6 +386,19 @@ body::before {
 .fold-chev { display: inline-flex; color: var(--muted); flex: none; transition: transform .25s; }
 .fold-chev svg { width: 18px; height: 18px; }
 .fold-row[aria-expanded="true"] .fold-chev { transform: rotate(180deg); }
+
+/* Тост с действием («Отменить») */
+.toast { display: flex; align-items: center; gap: 14px; width: max-content; }
+.toast-act { border: none; background: none; padding: 6px 0; color: var(--toggle); font-weight: 800; font-size: 14px; white-space: nowrap; }
+
+/* Поиск в истории */
+.search input {
+  width: 100%; height: 46px; padding: 0 16px; border-radius: var(--radius-s); outline: none;
+  background: var(--glass); border: 1px solid var(--glass-line); box-shadow: var(--glass-hi); color: var(--ink); font-size: 15px;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); -webkit-appearance: none; appearance: none;
+}
+.search input::placeholder { color: var(--dim); }
+.search input:focus { border-color: rgba(163,185,247,0.55); }
 .toast { bottom: calc(var(--tabbar-h) + var(--safe-b) + 8px); }
 
 .sheet-backdrop { background: rgba(3,5,14,0.55); }

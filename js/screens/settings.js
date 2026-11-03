@@ -1,12 +1,12 @@
 // Настройки: свои поля, категории, аккаунт
-import { esc, FIELD_TYPES } from '../core/util.js';
+import { esc, FIELD_TYPES, REPEAT_LABEL, txDay, today } from '../core/util.js';
 import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
-import { CFG, pb, uid } from '../core/pb.js';
+import { CFG, pb, uid, ownerFilter } from '../core/pb.js';
 import { mountPushBlock, forgetThisDevice } from './push.js';
 import { mountIngestBlock } from './ingest.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
-import { getCats, getFields } from '../core/data.js';
+import { getCats, getFields, getDebts } from '../core/data.js';
 import { render, goHome } from '../router.js';
 import { COPYRIGHT, termsSheet } from './login.js';
 import { newCategorySheet } from './form.js';
@@ -44,6 +44,7 @@ export async function settingsScreen(route, alive) {
     <section class="sec">
       <div class="sec-head"><h2>Аккаунт</h2></div>
       <div class="list"><div class="row" style="min-height:52px"><div class="main"><div class="name">${esc(pb.authStore.record?.email || '')}</div><div class="meta">Сервер: ${esc(CFG.PB_URL.replace('https://', ''))}</div></div></div></div>
+      <button class="btn secondary" id="export-csv">Скачать все записи (CSV)</button>
       <button class="btn secondary" id="logout">Выйти</button>
       <button class="link-btn" id="show-terms" style="align-self:flex-start">Условия тестирования</button>
       <button class="btn danger" id="del-account">Удалить аккаунт</button>
@@ -75,6 +76,7 @@ export async function settingsScreen(route, alive) {
       state.cache.cats = null; toast('Категория удалена'); render();
     } catch (e) { toast(errText(e)); }
   });
+  $view.querySelector('#export-csv').onclick = (e) => exportCsv(e.currentTarget);
   $view.querySelector('#show-terms').onclick = termsSheet;
   $view.querySelector('#del-account').onclick = () => deleteAccountSheet();
   $view.querySelector('#logout').onclick = async (e) => {
@@ -82,6 +84,47 @@ export async function settingsScreen(route, alive) {
     await forgetThisDevice();
     pb.authStore.clear(); state.cache = { cats: null, fields: null, debts: null }; goHome();
   };
+}
+
+// Все записи в CSV для Excel/Numbers/Google Таблиц: «;» и запятая в суммах (так открывается в ru/pl Excel), BOM для кириллицы
+async function exportCsv(btn) {
+  btn.disabled = true;
+  try {
+    const [txs, fields, debts] = await Promise.all([
+      pb.collection('transactions').getFullList({ filter: ownerFilter(), sort: 'date,created', expand: 'category' }),
+      getFields(), getDebts()
+    ]);
+    const KIND = { income: 'Доход', expense: 'Расход', adjust: 'Корректировка' };
+    const debtName = Object.fromEntries(debts.map((d) => [d.id, d.name]));
+    const num = (v) => String(Math.round(v * 100) / 100).replace('.', ',');
+    // Текст, начинающийся с = + - @, Excel принял бы за формулу — экранируем апострофом
+    const text = (v) => { const s = String(v ?? ''); return /^[=+\-@]/.test(s) ? `'${s}` : s; };
+    const cell = (v) => { const s = String(v ?? ''); return /[;"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const head = ['Дата', 'Тип', 'Статус', 'Сумма', 'Категория', 'Комментарий', 'Повтор', 'Долг', ...fields.map((f) => f.label)];
+    const rows = txs.map((t) => [
+      txDay(t), KIND[t.kind] || t.kind, t.status === 'paid' ? 'Оплачено' : 'Запланировано', num(t.amount),
+      text(t.expand?.category?.name), text(t.note), t.repeat && t.repeat !== 'none' ? REPEAT_LABEL[t.repeat] : '',
+      text(debtName[t.debt]),
+      ...fields.map((f) => { const v = t.extra?.[f.id]; return v === true ? 'Да' : text(v); })
+    ]);
+    const csv = '﻿' + [head.map(text), ...rows].map((r) => r.map(cell).join(';')).join('\r\n');
+    const name = `finansy-${today()}.csv`;
+    const file = new File([csv], name, { type: 'text/csv' });
+    // На iPhone (особенно в установленном приложении) скачивание не работает — отдаём через «Поделиться» → «Сохранить в Файлы»
+    if (/iPhone|iPad/.test(navigator.userAgent) && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Финансы' });
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(file); a.download = name;
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+    toast(`Выгружено записей: ${txs.length}`);
+  } catch (e) {
+    if (e?.name !== 'AbortError') toast(errText(e)); // AbortError — закрыл «Поделиться»
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 export function categorySheet(c) {

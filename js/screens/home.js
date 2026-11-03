@@ -4,21 +4,20 @@ import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid, ownerFilter } from '../core/pb.js';
 import { $view, toast, errText, monthSwitch, bindMonthSwitch, txRow, bindPay, openSheet, closeSheet } from '../ui.js';
-import { txBetween } from '../core/data.js';
+import { txBetween, getBalance } from '../core/data.js';
 import { render } from '../router.js';
 
 export async function homeScreen(route, alive) {
   const m = state.month;
   const from = ymd(m), to = ymd(addMonths(m, 1));
   const isCur = ymd(firstOfMonth(new Date())) === from;
-  const [allPaid, monthTx, upcoming, recent] = await Promise.all([
-    pb.collection('transactions').getFullList({ filter: `${ownerFilter()} && status = 'paid'`, fields: 'kind,amount' }),
+  const [balance, monthTx, upcoming, recent] = await Promise.all([
+    getBalance(),
     txBetween(from, to),
     isCur ? pb.collection('transactions').getList(1, 5, { filter: `${ownerFilter()} && status = 'planned'`, sort: 'date,created', expand: 'category' }) : null,
     isCur ? pb.collection('transactions').getList(1, 5, { filter: `${ownerFilter()} && status = 'paid'`, sort: '-date,-created', expand: 'category' }) : null
   ]);
   if (!alive()) return;
-  const balance = allPaid.reduce((s, t) => s + net(t), 0);
   let inc = 0, exp = 0, plannedNet = 0;
   for (const t of monthTx) {
     if (t.status === 'paid') { if (t.kind === 'income') inc += t.amount; else if (t.kind === 'expense') exp += t.amount; }
