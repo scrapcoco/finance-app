@@ -129,62 +129,78 @@ document.addEventListener('keydown', (e) => {
 const GLOW_BOXES = [['.segment', 'button[aria-pressed="true"]'], ['.cal-grid', '.day[aria-pressed="true"] .n']];
 const glowAt = new Map();
 
-// «Резиновая» подсветка: передний край уходит первым и быстрее, задний догоняет —
-// капсула на миг вытягивается в сторону движения и снова сжимается. Тянется по обеим осям
-// (нижнее меню и переключатели — вбок, боковая панель на ПК и строки календаря — вверх-вниз).
+// «Резиновая» подсветка, как в ролике: края двигаются отдельно — передний уходит первым и быстрее,
+// задний догоняет медленнее, поэтому капсула на миг вытягивается в сторону движения и снова сжимается.
+// Работает по обеим осям (нижнее меню и переключатели — вбок, полоска на ПК и строки календаря — вверх-вниз).
 //
-// Как устроено: подсветка сразу встаёт на итоговое место (left/top/width/height), а движение рисуется
-// через transform (сдвиг + растяжение) анимацией Web Animations. Такая анимация идёт на видеокарте и не
-// дёргается, даже когда браузер в этот момент рисует новый экран (раньше двигались left/right — и дёргались).
+// Как устроено: элемент подсветки занимает весь контейнер, а видимую капсулу вырезает clip-path: inset(...)
+// из четырёх CSS-переменных — отступов краёв (--gt/--gr/--gb/--gl, см. app.css). Каждый край — свой твин
+// со своей длительностью и кривой (как gsap.to в ролике). В отличие от растяжения через scale, обводка
+// и скругления при этом не искажаются.
 //
-// container — элемент, внутри которого подсветка (position: relative/fixed); p = { x, y, w, h } — от его внутреннего края.
-// from — откуда ехать (null — просто встать на место). live — тот же элемент уже на экране и, возможно, ещё едет:
-// тогда едем из того места, где его сейчас видно, — быстрые переключения без прыжков.
+// container — элемент, внутри которого подсветка; p = { x, y, w, h } — от его внутреннего края.
+// from — откуда ехать (null — просто встать на место). live — подсветка уже на экране и, возможно, ещё едет:
+// тогда каждый край продолжает из своего текущего положения — быстрые переключения без прыжков.
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
-export function placeGlow(glow, container, to, from, live = false) {
-  if (live && glow.isConnected && glow.style.opacity === '1') {
-    const r = glow.getBoundingClientRect(), c = container.getBoundingClientRect();
-    if (r.width && r.height) from = { x: r.left - c.left - container.clientLeft, y: r.top - c.top - container.clientTop, w: r.width, h: r.height };
-  }
-  glow._anim?.cancel();
-  const s = glow.style;
-  s.transition = 'opacity .2s'; s.transformOrigin = '0 0'; s.transform = ''; s.right = 'auto'; s.bottom = 'auto';
-  s.left = `${to.x}px`; s.top = `${to.y}px`; s.width = `${to.w}px`; s.height = `${to.h}px`; s.opacity = '1';
-  if (!from || reduceMotion.matches || !to.w || !to.h) return;
-  if (Math.abs(from.x - to.x) < 0.5 && Math.abs(from.y - to.y) < 0.5 && Math.abs(from.w - to.w) < 0.5 && Math.abs(from.h - to.h) < 0.5) return;
+const EASE = {
+  out: (t) => 1 - (1 - t) ** 3,                                        // power3.out — передний край: резкий старт
+  inOut: (t) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)     // power3.inOut — задний край: плавно догоняет
+};
+const LEAD_MS = 300, TRAIL_MS = 440; // в ролике 360 и 550 — у нас чуть быстрее, чтобы рамка не казалась отстающей
+const EDGES = ['t', 'r', 'b', 'l'];
 
-  const tf = (p) => `translate(${p.x - to.x}px, ${p.y - to.y}px) scale(${p.w / to.w}, ${p.h / to.h})`;
-  // Середина пути (35% времени): передний край прошёл 85%, задний — 40% → капсула заметно, но не сильно растянута.
-  // Короткая анимация (0,36 с): рамка успевает за переходом и не кажется отстающей
-  const lerp = (a, b, t) => a + (b - a) * t;
-  const LEAD = 0.85, TRAIL = 0.4;
-  const right = to.x > from.x, down = to.y > from.y;
-  const x1 = lerp(from.x, to.x, right ? TRAIL : LEAD), x2 = lerp(from.x + from.w, to.x + to.w, right ? LEAD : TRAIL);
-  const y1 = lerp(from.y, to.y, down ? TRAIL : LEAD), y2 = lerp(from.y + from.h, to.y + to.h, down ? LEAD : TRAIL);
-  let mid = { x: x1, y: y1, w: Math.max(1, x2 - x1), h: Math.max(1, y2 - y1) };
-  // На длинном пути (снизу панели наверх) не даём вытянуться в длинную полосу — она выглядит как отставший «хвост»:
-  // растяжение не больше 1,2 размера кнопки; ужимаем со стороны заднего края, передний остаётся впереди
-  const maxW = to.w * 2.2, maxH = to.h * 2.2;
-  if (mid.w > maxW) mid = { ...mid, x: right ? mid.x + mid.w - maxW : mid.x, w: maxW };
-  if (mid.h > maxH) mid = { ...mid, y: down ? mid.y + mid.h - maxH : mid.y, h: maxH };
-  glow._anim = glow.animate([
-    { transform: tf(from), easing: 'cubic-bezier(.3,.6,.45,1)' },       // резкий старт: вытягивается
-    { transform: tf(mid), offset: 0.35, easing: 'cubic-bezier(.25,.1,.2,1)' }, // задний край догоняет, капсула сжимается
-    { transform: 'none' }
-  ], { duration: 360 });
+function setEdges(glow, e) {
+  const s = glow.style;
+  s.setProperty('--gt', `${e.t}px`); s.setProperty('--gr', `${e.r}px`);
+  s.setProperty('--gb', `${e.b}px`); s.setProperty('--gl', `${e.l}px`);
+  glow._edges = e;
 }
 
-// Перед перерисовкой экрана (render): подсветки в переключателях замирают там, где их сейчас видно,
+export function placeGlow(glow, container, to, from, live = false) {
+  const W = container.clientWidth, H = container.clientHeight;
+  const edgesOf = (p) => ({ t: p.y, r: W - p.x - p.w, b: H - p.y - p.h, l: p.x });
+  const target = edgesOf(to);
+  cancelAnimationFrame(glow._raf);
+  glow.style.opacity = '1';
+  const start = live && glow._edges ? { ...glow._edges } : from ? edgesOf(from) : null;
+  if (!start || reduceMotion.matches) { setEdges(glow, target); return; }
+  const right = target.l > start.l, down = target.t > start.t;
+  // Какой край ведущий: при движении вправо — правый, влево — левый; вниз — нижний, вверх — верхний
+  const spec = {
+    l: right ? [TRAIL_MS, EASE.inOut] : [LEAD_MS, EASE.out],
+    r: right ? [LEAD_MS, EASE.out] : [TRAIL_MS, EASE.inOut],
+    t: down ? [TRAIL_MS, EASE.inOut] : [LEAD_MS, EASE.out],
+    b: down ? [LEAD_MS, EASE.out] : [TRAIL_MS, EASE.inOut]
+  };
+  // Отсчёт — от первого нарисованного кадра: если клик совпал с тяжёлым кадром, подсветка не прыгает, а стартует с нуля
+  let t0 = null;
+  const step = (now) => {
+    if (t0 === null) t0 = now;
+    const e = {};
+    let done = true;
+    for (const k of EDGES) {
+      const [ms, ease] = spec[k];
+      const p = Math.min(1, (now - t0) / ms);
+      if (p < 1) done = false;
+      e[k] = start[k] + (target[k] - start[k]) * ease(p);
+    }
+    setEdges(glow, e);
+    if (!done) glow._raf = requestAnimationFrame(step);
+  };
+  setEdges(glow, start);
+  glow._raf = requestAnimationFrame(step);
+}
+
+// Перед перерисовкой экрана (render): подсветки в переключателях замирают там, где они сейчас,
 // и это место запоминается — подсветка в новой разметке поедет именно оттуда, без прыжка назад.
 export function freezeGlows() {
   for (const [sel] of GLOW_BOXES) {
     for (const box of document.querySelectorAll(sel)) {
       const glow = box.querySelector(':scope > .seg-glow');
-      if (!glow || glow.style.opacity !== '1') continue;
-      const r = glow.getBoundingClientRect(), c = box.getBoundingClientRect();
-      if (!r.width || !c.width) continue;
-      if (glow._anim) { try { glow._anim.commitStyles(); } catch (e) { /* уже закончилась */ } glow._anim.cancel(); glow._anim = null; }
-      glowAt.set(box.getAttribute('aria-label') || sel, { x: r.left - c.left - box.clientLeft, y: r.top - c.top - box.clientTop, w: r.width, h: r.height });
+      if (!glow || glow.style.opacity !== '1' || !glow._edges) continue;
+      cancelAnimationFrame(glow._raf);
+      const e = glow._edges, W = box.clientWidth, H = box.clientHeight;
+      glowAt.set(box.getAttribute('aria-label') || sel, { x: e.l, y: e.t, w: W - e.l - e.r, h: H - e.t - e.b });
     }
   }
 }

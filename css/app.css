@@ -508,12 +508,29 @@ body::before {
 }
 
 /* ===== Плавная смена экрана (классы ставит render в router.js) ===== */
-.view { transition: opacity .18s ease; }
-.view.view-leaving { opacity: .45; }
 /* expo-out: быстро выезжает, потом медленно дотягивается на место */
 .view.view-enter { animation: view-in .7s cubic-bezier(.16,1,.3,1) both; }
 @keyframes view-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .view.view-enter { animation: none; } .view.view-leaving { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .view.view-enter { animation: none; } }
 
-/* Подсветка двигается через transform (placeGlow) — отдельный слой на видеокарте, без рывков */
-.tab-glow, .seg-glow { will-change: transform; }
+/* ===== Подсветка выбранного: капсула вырезается clip-path из 4 отступов (--gt/--gr/--gb/--gl ставит placeGlow) =====
+   Два слоя: ::before — тонкая обводка, ::after — заливка на 1px внутри. Растяжение не искажает углы и обводку. */
+.tab-glow, .seg-glow {
+  left: 0; top: 0; right: 0; bottom: 0; width: auto; height: auto;
+  background: none; border: none; box-shadow: none; border-radius: 0; transform: none;
+  --gt: 0px; --gr: 0px; --gb: 0px; --gl: 0px;
+  --glow-radius: 20px; --glow-fill: rgba(255,255,255,0.14); --glow-line: rgba(255,255,255,0.24);
+  transition: opacity .2s;
+}
+.tab-glow::before, .tab-glow::after, .seg-glow::before, .seg-glow::after { content: ""; position: absolute; inset: 0; }
+.tab-glow::before, .seg-glow::before {
+  background: var(--glow-line);
+  clip-path: inset(var(--gt) var(--gr) var(--gb) var(--gl) round var(--glow-radius));
+}
+.tab-glow::after, .seg-glow::after {
+  background: var(--glow-fill);
+  clip-path: inset(calc(var(--gt) + 1px) calc(var(--gr) + 1px) calc(var(--gb) + 1px) calc(var(--gl) + 1px) round calc(var(--glow-radius) - 1px));
+}
+.seg-glow { --glow-radius: 11px; --glow-fill: rgba(255,255,255,0.15); --glow-line: rgba(255,255,255,0.10); }
+.cal-grid > .seg-glow { background: none; border-radius: 0; --glow-radius: 10px; --glow-fill: var(--ink); --glow-line: var(--ink); }
+@media (min-width: 960px) { .tab-glow { --glow-radius: 16px; } }

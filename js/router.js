@@ -56,7 +56,14 @@ matchMedia('(min-width: 960px)').addEventListener('change', () => {
   renderTabbar(parseRoute().name);
 });
 
-// Плавная смена экрана: старый слегка гаснет, пока грузятся данные, новый проявляется (анимации — в app.css)
+// Окно поменяло размер — края подсветки считаются от размеров меню, ставим её заново (без анимации)
+window.addEventListener('resize', () => {
+  if (!pb.authStore.isValid || !$tabbar.querySelector('.tab-glow')) return;
+  glowFrom = null;
+  renderTabbar(parseRoute().name);
+});
+
+// Плавная смена экрана: новый экран проявляется (анимация — в app.css)
 let shownScreen = null;
 
 export function parseRoute() {
@@ -84,7 +91,7 @@ export async function render() {
   const seq = ++renderSeq;
   if (!pb.authStore.isValid) {
     $tabbar.hidden = true; $tabbar.innerHTML = ''; glowFrom = null; shownScreen = null;
-    $view.dataset.screen = 'login'; $view.classList.remove('view-leaving', 'view-enter');
+    $view.dataset.screen = 'login'; $view.classList.remove('view-enter');
     return viewLogin();
   }
   const route = parseRoute();
@@ -100,13 +107,12 @@ export async function render() {
   renderTabbar(route.name);
   freezeGlows();
   if (!$view.innerHTML.trim()) $view.innerHTML = '<div class="loading">Загрузка…</div>';
-  else if (changing) $view.classList.add('view-leaving');
+  // Старый экран не затемняем: прозрачность слоя со стеклянными карточками — дорогой кадр, из-за него дёргалась подсветка
   try {
     await fn(route, () => seq === renderSeq);
     if (seq !== renderSeq) return;
     $view.dataset.screen = screen;
     $view.classList.toggle('no-tabs', !withTabs);
-    $view.classList.remove('view-leaving');
     if (changing) {
       // Перезапуск анимации появления
       $view.classList.remove('view-enter'); void $view.offsetWidth; $view.classList.add('view-enter');
@@ -114,7 +120,6 @@ export async function render() {
     }
     shownScreen = screen;
   } catch (e) {
-    $view.classList.remove('view-leaving');
     shownScreen = null; // экран ошибки — следующий экран снова появится плавно
     if (e?.status === 401) { pb.authStore.clear(); return render(); }
     if (seq !== renderSeq) return;
