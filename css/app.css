@@ -379,6 +379,13 @@ body::before {
 .pay-btn svg { width: 18px; height: 18px; }
 .pay-btn:active { transform: scale(.92); background: rgba(163,185,247,0.26); }
 .pay-btn:disabled { opacity: .45; }
+
+/* Свёрнутый блок в настройках (Расходы с iPhone) */
+.fold-row { cursor: pointer; }
+.fold-row .badge { flex: none; }
+.fold-chev { display: inline-flex; color: var(--muted); flex: none; transition: transform .25s; }
+.fold-chev svg { width: 18px; height: 18px; }
+.fold-row[aria-expanded="true"] .fold-chev { transform: rotate(180deg); }
 .toast { bottom: calc(var(--tabbar-h) + var(--safe-b) + 8px); }
 
 .sheet-backdrop { background: rgba(3,5,14,0.55); }

@@ -18,7 +18,8 @@ export async function settingsScreen(route, alive) {
     const list = cats.filter((c) => c.kind === kind);
     return `<div class="field-label">${title}</div>
       <div class="list">${list.map((c) => `<div class="row" style="min-height:52px"><div class="main"><div class="name">${esc(c.name)}</div></div>
-        <div class="tools"><button class="icon-btn" data-delcat="${c.id}" aria-label="Удалить категорию ${esc(c.name)}">${ICON.trash}</button></div></div>`).join('')
+        <div class="tools"><button class="icon-btn" data-editcat="${c.id}" aria-label="Переименовать категорию ${esc(c.name)}">${ICON.edit}</button>
+          <button class="icon-btn" data-delcat="${c.id}" aria-label="Удалить категорию ${esc(c.name)}">${ICON.trash}</button></div></div>`).join('')
         || '<div class="empty">Категорий нет.</div>'}</div>
       <button class="chip dashed" data-addcat="${kind}" style="align-self:flex-start">+ Добавить</button>`;
   };
@@ -64,6 +65,7 @@ export async function settingsScreen(route, alive) {
     catch (e) { toast(errText(e)); }
   });
   $view.querySelectorAll('[data-addcat]').forEach((b) => b.onclick = () => newCategorySheet(b.dataset.addcat, () => { toast('Категория добавлена'); render(); }));
+  $view.querySelectorAll('[data-editcat]').forEach((b) => b.onclick = () => categorySheet(cats.find((c) => c.id === b.dataset.editcat)));
   $view.querySelectorAll('[data-delcat]').forEach((b) => b.onclick = async () => {
     if (!confirm('Удалить категорию? Записи останутся, но будут без категории.')) return;
     try {
@@ -80,6 +82,26 @@ export async function settingsScreen(route, alive) {
     await forgetThisDevice();
     pb.authStore.clear(); state.cache = { cats: null, fields: null, debts: null }; location.hash = '#/'; render();
   };
+}
+
+export function categorySheet(c) {
+  openSheet(`<h2>Категория</h2>
+    <div class="form-list"><div class="frow"><label for="cnm">Название</label><input id="cnm" maxlength="60" value="${esc(c.name)}"></div></div>
+    <div class="error" id="cerr3" role="alert"></div>
+    <div class="btns"><button class="btn secondary" id="ccx">Отмена</button><button class="btn" id="csx">Сохранить</button></div>`, (s) => {
+    s.querySelector('#ccx').onclick = closeSheet;
+    s.querySelector('#csx').onclick = async () => {
+      const name = s.querySelector('#cnm').value.trim();
+      const err = s.querySelector('#cerr3');
+      if (!name) { err.textContent = 'Введи название.'; return; }
+      if (name === c.name) { closeSheet(); return; }
+      const btn = s.querySelector('#csx'); btn.disabled = true;
+      try {
+        await pb.collection('categories').update(c.id, { name });
+        state.cache.cats = null; closeSheet(); toast('Категория переименована'); render();
+      } catch (e) { err.textContent = errText(e); btn.disabled = false; }
+    };
+  });
 }
 
 export function deleteAccountSheet() {
