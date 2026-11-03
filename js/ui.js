@@ -115,22 +115,43 @@ export function closeSheet() { $sheetRoot.innerHTML = ''; }
 const SOUND_KEY = 'clickSound';
 export const soundOn = () => { try { return localStorage.getItem(SOUND_KEY) !== 'off'; } catch (e) { return true; } };
 export const setSound = (on) => { try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch (e) { /* приватный режим */ } };
-let audio = null;
+let audio = null, noise = null;
+// «Деревянный» тук: глухой корпус (низкий тон, быстро гаснет) + негармонический обертон (даёт «древесность»)
+// + очень короткий щелчок шума в начале (касание). Всё через мягкий фильтр — без резких высоких.
 function tick(strong) {
   if (!soundOn()) return;
   try {
     audio ||= new (window.AudioContext || window.webkitAudioContext)();
     if (audio.state === 'suspended') audio.resume();
-    const t = audio.currentTime, osc = audio.createOscillator(), gain = audio.createGain();
-    osc.type = 'sine';
-    // Главные действия — ниже и плотнее, остальное — светлый короткий щелчок
-    osc.frequency.setValueAtTime(strong ? 880 : 1500, t);
-    osc.frequency.exponentialRampToValueAtTime(strong ? 420 : 900, t + 0.045);
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(strong ? 0.09 : 0.05, t + 0.004);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + (strong ? 0.09 : 0.06));
-    osc.connect(gain).connect(audio.destination);
-    osc.start(t); osc.stop(t + 0.1);
+    const ctx = audio, t = ctx.currentTime;
+    if (!noise) {
+      noise = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.03), ctx.sampleRate);
+      const d = noise.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const out = ctx.createBiquadFilter();
+    out.type = 'lowpass'; out.frequency.value = 2800; out.Q.value = 0.5;
+    out.connect(ctx.destination);
+    const f = strong ? 300 : 450;           // главные действия — ниже, «тяжелее»
+    const vol = strong ? 0.22 : 0.15;
+    const voice = (type, freq, peak, decay) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t);
+      o.frequency.exponentialRampToValueAtTime(freq * 0.9, t + decay); // лёгкое «оседание» тона, как у удара
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+      o.connect(g).connect(out);
+      o.start(t); o.stop(t + decay + 0.02);
+    };
+    voice('triangle', f, vol, strong ? 0.11 : 0.08);      // корпус
+    voice('sine', f * 2.76, vol * 0.35, 0.035);            // обертон деревянного бруска
+    const n = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), ng = ctx.createGain();
+    n.buffer = noise; bp.type = 'bandpass'; bp.frequency.value = strong ? 1400 : 1900; bp.Q.value = 1.4;
+    ng.gain.setValueAtTime(vol * 0.6, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.012);
+    n.connect(bp).connect(ng).connect(out);
+    n.start(t); n.stop(t + 0.03);
   } catch (e) { /* без звука — не страшно */ }
 }
 const PRESSABLE = 'button, a, .chip';
