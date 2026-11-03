@@ -1,5 +1,5 @@
 // Загрузка справочников и операции с записями
-import { ymd, parseYmd, pbDate, txDay, shiftMonthKeepDay, nextOccurrence, humanDate, daysUntil } from './util.js';
+import { ymd, parseYmd, pbDate, txDay, shiftMonthKeepDay, nextOccurrence, dayOf, humanDate, daysUntil } from './util.js';
 import { state } from './state.js';
 import { pb, uid, ownerFilter } from './pb.js';
 import { toast } from '../ui.js';
@@ -50,10 +50,12 @@ export async function ensureDefaults() {
 export async function afterPaid(tx) {
   let next = null;
   if (tx.repeat && tx.repeat !== 'none') {
-    next = nextOccurrence(txDay(tx), tx.repeat);
+    // У старых записей repeat_day нет — тогда день берётся из даты, как раньше
+    const day = tx.repeat_day || dayOf(txDay(tx));
+    next = nextOccurrence(txDay(tx), tx.repeat, day);
     await pb.collection('transactions').create({
       kind: tx.kind, amount: tx.amount, date: pbDate(next), category: tx.category || '',
-      note: tx.note || '', status: 'planned', repeat: tx.repeat, debt: tx.debt || '',
+      note: tx.note || '', status: 'planned', repeat: tx.repeat, repeat_day: day, debt: tx.debt || '',
       extra: tx.extra || {}, owner: uid()
     });
   }

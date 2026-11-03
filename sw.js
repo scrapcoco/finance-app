@@ -1,5 +1,5 @@
 // Кэширует только оболочку приложения. Данные всегда берутся с сервера.
-const CACHE = 'finance-v20';
+const CACHE = 'finance-v21';
 const SHELL = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/pocketbase.umd.js',
   'js/main.js', 'js/router.js', 'js/ui.js', 'js/core/pb.js', 'js/core/util.js', 'js/core/icons.js', 'js/core/state.js', 'js/core/data.js', 'js/screens/login.js', 'js/screens/home.js', 'js/screens/form.js', 'js/screens/calendar.js', 'js/screens/history.js', 'js/screens/reports.js', 'js/screens/debts.js', 'js/screens/settings.js', 'js/screens/push.js', 'js/screens/ingest.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png'];
 
@@ -14,12 +14,26 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
-  // Сначала сеть (чтобы обновления приходили сразу), при отсутствии сети — кэш
-  e.respondWith(
-    fetch(e.request)
-      .then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); return res; })
-      .catch(() => caches.match(e.request).then((r) => r || caches.match('index.html')))
-  );
+  // Сначала сеть (чтобы обновления приходили сразу). Если сеть молчит дольше 3 с или ответила ошибкой —
+  // берём из кэша. В кэш кладём только удачные ответы, чтобы туда не попала страница ошибки.
+  const net = fetch(e.request).then((res) => {
+    if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
+    return res;
+  });
+  e.waitUntil(net.catch(() => {}));
+  e.respondWith((async () => {
+    const cached = await caches.match(e.request);
+    if (!cached) {
+      return net.catch(() => (e.request.mode === 'navigate' ? caches.match('index.html') : Response.error()));
+    }
+    const slow = new Promise((r) => setTimeout(() => r(null), 3000));
+    try {
+      const res = await Promise.race([net, slow]);
+      return res && res.ok ? res : cached;
+    } catch (err) {
+      return cached;
+    }
+  })());
 });
 
 // Push-напоминания

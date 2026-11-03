@@ -4,7 +4,7 @@ import { state } from '../core/state.js';
 import { pb } from '../core/pb.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
 import { ensureDefaults } from '../core/data.js';
-import { render } from '../router.js';
+import { render, goHome } from '../router.js';
 
 const TERMS_VERSION = '1';
 
@@ -57,8 +57,7 @@ export function viewLogin(mode = 'login') {
     await pb.collection('users').authWithPassword(email, password);
     state.cache = { cats: null, fields: null, debts: null };
     await ensureDefaults();
-    location.hash = '#/';
-    render();
+    goHome();
   };
 
   form.onsubmit = async (e) => {

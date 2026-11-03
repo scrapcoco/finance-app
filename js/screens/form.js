@@ -1,5 +1,5 @@
 // Добавление и редактирование записи, корректировка баланса, новая категория
-import { esc, parseAmount, REPEAT_LABEL, pbDate, txDay, today } from '../core/util.js';
+import { esc, parseAmount, REPEAT_LABEL, pbDate, txDay, today, dayOf } from '../core/util.js';
 import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid } from '../core/pb.js';
@@ -48,6 +48,8 @@ export async function viewForm(tx, route, alive) {
   const [cats, fields, debts] = await Promise.all([getCats(), getFields(), getDebts()]);
   if (!alive()) return;
   const p = route.params;
+  // Куда вернуться после сохранения, удаления или «✕»: туда, откуда пришли (?back=calendar и т. п.)
+  const backHash = p.get('back') ? `#/${p.get('back')}` : '#/';
   const presetDebt = p.get('debt') ? debts.find((d) => d.id === p.get('debt')) : null;
   const f = tx ? {
     kind: tx.kind, amount: String(tx.amount).replace('.', ','), category: tx.category || '', date: txDay(tx),
@@ -65,7 +67,7 @@ export async function viewForm(tx, route, alive) {
     const visibleFields = fields.filter((x) => !x.hidden);
     $view.innerHTML = `
       <div class="head">
-        <a class="icon-btn" href="#/" aria-label="Закрыть">${ICON.close}</a>
+        <a class="icon-btn" href="${esc(backHash)}" aria-label="Закрыть">${ICON.close}</a>
         <div class="title">${tx ? 'Запись' : 'Новая запись'}</div>
         <div style="width:44px"></div>
       </div>
@@ -126,6 +128,7 @@ export async function viewForm(tx, route, alive) {
     q('#amt').oninput = (e) => { f.amount = e.target.value; };
     q('#dt').onchange = (e) => {
       f.date = e.target.value || today();
+      if (!e.target.value) e.target.value = f.date; // очистили поле — показываем, какая дата сохранится
       if (!tx && f.date > today() && !f.planned) { f.planned = true; draw(); }
     };
     q('#nt').oninput = (e) => { f.note = e.target.value; };
@@ -150,7 +153,7 @@ export async function viewForm(tx, route, alive) {
     q('#save').onclick = save;
     if (q('#del')) q('#del').onclick = async () => {
       if (!confirm('Удалить эту запись?')) return;
-      try { await pb.collection('transactions').delete(tx.id); toast('Запись удалена'); location.hash = '#/'; }
+      try { await pb.collection('transactions').delete(tx.id); toast('Запись удалена'); location.hash = backHash; }
       catch (e) { q('#err').textContent = errText(e); }
     };
     if (!tx && !f.amount) setTimeout(() => q('#amt')?.focus(), 50);
@@ -170,7 +173,9 @@ export async function viewForm(tx, route, alive) {
     const data = {
       kind: f.kind, amount: Math.round(amount * 100) / 100, date: pbDate(f.date || today()),
       category: f.category, note: f.note.trim(), status: f.planned ? 'planned' : 'paid',
-      repeat: f.planned ? f.repeat : 'none', debt: f.debt, extra
+      repeat: f.planned ? f.repeat : 'none', debt: f.debt, extra,
+      // «Родной» день серии: сохраняем прежний, если дату не трогали (28 февраля у платежа «31-го» остаётся 31-м)
+      repeat_day: tx && txDay(tx) === f.date && tx.repeat_day ? tx.repeat_day : dayOf(f.date || today())
     };
     const btn = $view.querySelector('#save');
     btn.disabled = true; err.textContent = '';
@@ -180,7 +185,7 @@ export async function viewForm(tx, route, alive) {
         if (tx.status === 'planned' && data.status === 'paid') {
           // Как «Отметить оплаченным» в календаре: следующий повтор считается от плановой даты,
           // повтор берётся из формы (выбрал «Не повторять» — серия заканчивается)
-          toast(paidText(await afterPaid({ ...data, date: tx.date, repeat: f.repeat })));
+          toast(paidText(await afterPaid({ ...data, date: tx.date, repeat: f.repeat, repeat_day: tx.repeat_day || dayOf(txDay(tx)) })));
         } else {
           toast('Изменения сохранены');
         }
@@ -189,7 +194,7 @@ export async function viewForm(tx, route, alive) {
         if (data.debt && data.status === 'paid') await bumpDebtDue(data.debt, f.date);
         toast(data.status === 'planned' ? 'Платёж запланирован' : 'Запись сохранена');
       }
-      location.hash = route.params.get('back') ? `#/${route.params.get('back')}` : '#/';
+      location.hash = backHash;
     } catch (e) {
       err.textContent = errText(e); btn.disabled = false;
     }

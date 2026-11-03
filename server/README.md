@@ -12,6 +12,7 @@ Netlify эту папку не отдаёт (правило в `netlify.toml`), 
 | `1792846263_owner_update_rule.js` | `/opt/pocketbase/pb_migrations/` — запрет менять `owner` при обновлении |
 | `1792900000_users_ingest_key.js` | `/opt/pocketbase/pb_migrations/` — скрытое поле `users.ingest_key_hash` |
 | `1792950000_debts_direction.js` | `/opt/pocketbase/pb_migrations/` — `debts.direction`: я должен / мне должны |
+| `1793000000_transactions_repeat_day.js` | `/opt/pocketbase/pb_migrations/` — `transactions.repeat_day`: «родной» день повторяющегося платежа |
 | `pb_hooks/finance_ingest.pb.js` | `/opt/pocketbase/pb_hooks/` — ключ и приём расходов с iPhone |
 
 Что **не** кладём в репозиторий (он публичный):

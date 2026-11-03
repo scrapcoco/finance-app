@@ -7,7 +7,7 @@ import { mountPushBlock, forgetThisDevice } from './push.js';
 import { mountIngestBlock } from './ingest.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
 import { getCats, getFields } from '../core/data.js';
-import { render } from '../router.js';
+import { render, goHome } from '../router.js';
 import { COPYRIGHT, termsSheet } from './login.js';
 import { newCategorySheet } from './form.js';
 
@@ -80,7 +80,7 @@ export async function settingsScreen(route, alive) {
   $view.querySelector('#logout').onclick = async (e) => {
     e.currentTarget.disabled = true;
     await forgetThisDevice();
-    pb.authStore.clear(); state.cache = { cats: null, fields: null, debts: null }; location.hash = '#/'; render();
+    pb.authStore.clear(); state.cache = { cats: null, fields: null, debts: null }; goHome();
   };
 }
 
@@ -122,7 +122,7 @@ export function deleteAccountSheet() {
         } catch (e) { /* не критично */ }
         await pb.collection('users').delete(uid());
         pb.authStore.clear(); state.cache = { cats: null, fields: null, debts: null };
-        closeSheet(); location.hash = '#/'; render(); toast('Аккаунт удалён');
+        closeSheet(); goHome(); toast('Аккаунт удалён');
       } catch (e) { s.querySelector('#aerr').textContent = errText(e); b.disabled = false; }
     };
   });

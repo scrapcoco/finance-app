@@ -19,9 +19,20 @@ export const net = (t) => t.kind === 'income' ? t.amount : t.kind === 'expense' 
 
 export const moneySigned = (v) => `${v < 0 ? '−' : ''}${money(v)}`;
 
+// «12,5», «1 234,56», «1.234,56», «1,234.56», «−20» → число; мусор («12abc», «,») → NaN.
+// Последний разделитель с 1–2 цифрами после него — дробная часть, остальные — разделители тысяч
+// (та же логика, что в server/pb_hooks/finance_ingest.pb.js)
 export const parseAmount = (s) => {
-  const n = parseFloat(String(s ?? '').replace(/\s/g, '').replace(',', '.'));
-  return Number.isFinite(n) ? n : NaN;
+  let t = String(s ?? '').replace(/[\s ]/g, '').replace(/^[−–]/, '-').replace(/^\+/, '');
+  const neg = t.startsWith('-');
+  if (neg) t = t.slice(1);
+  if (!/^[\d.,]*\d[\d.,]*$/.test(t)) return NaN;
+  const last = Math.max(t.lastIndexOf(','), t.lastIndexOf('.'));
+  t = last >= 0 && t.length - last - 1 <= 2
+    ? t.slice(0, last).replace(/[.,]/g, '') + '.' + t.slice(last + 1)
+    : t.replace(/[.,]/g, '');
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? (neg ? -n : n) : NaN;
 };
 
 export const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
@@ -66,13 +77,18 @@ export const shiftMonthKeepDay = (d, n) => {
   return t;
 };
 
-export const nextOccurrence = (s, repeat) => {
+// day — «родной» день серии (repeat_day): платёж 31-го после 28 февраля вернётся на 31 марта, а не останется 28-го
+export const nextOccurrence = (s, repeat, day) => {
   const d = parseYmd(s);
   if (repeat === 'weekly') return ymd(addDays(d, 7));
-  if (repeat === 'monthly') return ymd(shiftMonthKeepDay(d, 1));
-  if (repeat === 'yearly') return ymd(shiftMonthKeepDay(d, 12));
-  return null;
+  const n = repeat === 'monthly' ? 1 : repeat === 'yearly' ? 12 : 0;
+  if (!n) return null;
+  const t = new Date(d.getFullYear(), d.getMonth() + n, 1);
+  t.setDate(Math.min(day || d.getDate(), daysIn(t.getFullYear(), t.getMonth())));
+  return ymd(t);
 };
+
+export const dayOf = (s) => Number(String(s).slice(8, 10));
 
 export const humanDate = (s) => { const d = parseYmd(s); return `${d.getDate()} ${MONTHS_GEN[d.getMonth()]}`; };
 

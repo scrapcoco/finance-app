@@ -55,6 +55,12 @@ const ROUTES = {
   history: historyScreen, reports: reportsScreen, debts: debtsScreen, settings: settingsScreen
 };
 
+// На главную: смена hash сама вызовет render (hashchange); если уже на главной — рисуем вручную. Без двойной отрисовки.
+export function goHome() {
+  if (location.hash === '#/') render();
+  else location.hash = '#/';
+}
+
 let renderSeq = 0;
 
 export async function render() {

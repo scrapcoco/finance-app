@@ -47,7 +47,8 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 (`owner = @request.auth.id`); клиент дополнительно добавляет `ownerFilter()` в каждый `getFullList`/`getList`.
 
 - `transactions`: `kind` income|expense|adjust, `amount`, `date`, `category`→categories, `note`,
-  `status` planned|paid, `repeat` none|weekly|monthly|yearly, `debt`→debts, `extra` (json: id поля → значение)
+  `status` planned|paid, `repeat` none|weekly|monthly|yearly, `repeat_day` (1–31, «родной» день серии; пусто = день из даты),
+  `debt`→debts, `extra` (json: id поля → значение)
 - `categories`: `name`, `kind` income|expense, `sort`
 - `custom_fields`: `label`, `field_type` text|number|select|date|bool|url, `options`, `sort`, `hidden`
 - `debts`: `name`, `total`, `monthly_payment`, `next_due`, `note`, `closed`, `direction` owe|lent (пусто = owe)

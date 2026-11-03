@@ -52,7 +52,9 @@ export async function debtsScreen(route, alive) {
   for (let i = 5; i >= 0; i--) {
     const end = ymd(addMonths(mNow, -i + 1));
     let v = 0;
-    for (const d of debts) {
+    for (const d of rows) {
+      // Закрытый с остатком (простили, списали) — как и в блоке наверху, не считаем; погашенный полностью сам уходит в ноль
+      if (d.closed && d.left > 0) continue;
       if ((d.created || '').slice(0, 10) >= end) continue;
       const paidTo = pays.filter((p) => p.debt === d.id && txDay(p) < end).reduce((s, p) => s + p.amount, 0);
       v += Math.max(0, d.total - paidTo);
