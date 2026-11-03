@@ -154,18 +154,24 @@ export function placeGlow(glow, container, to, from, live = false) {
   if (Math.abs(from.x - to.x) < 0.5 && Math.abs(from.y - to.y) < 0.5 && Math.abs(from.w - to.w) < 0.5 && Math.abs(from.h - to.h) < 0.5) return;
 
   const tf = (p) => `translate(${p.x - to.x}px, ${p.y - to.y}px) scale(${p.w / to.w}, ${p.h / to.h})`;
-  // Середина пути: передний край прошёл 80%, задний — только 20% → капсула растянута
+  // Середина пути (35% времени): передний край прошёл 85%, задний — 40% → капсула заметно, но не сильно растянута.
+  // Короткая анимация (0,36 с): рамка успевает за переходом и не кажется отстающей
   const lerp = (a, b, t) => a + (b - a) * t;
-  const LEAD = 0.8, TRAIL = 0.2;
+  const LEAD = 0.85, TRAIL = 0.4;
   const right = to.x > from.x, down = to.y > from.y;
   const x1 = lerp(from.x, to.x, right ? TRAIL : LEAD), x2 = lerp(from.x + from.w, to.x + to.w, right ? LEAD : TRAIL);
   const y1 = lerp(from.y, to.y, down ? TRAIL : LEAD), y2 = lerp(from.y + from.h, to.y + to.h, down ? LEAD : TRAIL);
-  const mid = { x: x1, y: y1, w: Math.max(1, x2 - x1), h: Math.max(1, y2 - y1) };
+  let mid = { x: x1, y: y1, w: Math.max(1, x2 - x1), h: Math.max(1, y2 - y1) };
+  // На длинном пути (снизу панели наверх) не даём вытянуться в длинную полосу — она выглядит как отставший «хвост»:
+  // растяжение не больше 1,2 размера кнопки; ужимаем со стороны заднего края, передний остаётся впереди
+  const maxW = to.w * 2.2, maxH = to.h * 2.2;
+  if (mid.w > maxW) mid = { ...mid, x: right ? mid.x + mid.w - maxW : mid.x, w: maxW };
+  if (mid.h > maxH) mid = { ...mid, y: down ? mid.y + mid.h - maxH : mid.y, h: maxH };
   glow._anim = glow.animate([
     { transform: tf(from), easing: 'cubic-bezier(.3,.6,.45,1)' },       // резкий старт: вытягивается
-    { transform: tf(mid), offset: 0.42, easing: 'cubic-bezier(.35,0,.15,1)' }, // задний край догоняет, капсула сжимается
+    { transform: tf(mid), offset: 0.35, easing: 'cubic-bezier(.25,.1,.2,1)' }, // задний край догоняет, капсула сжимается
     { transform: 'none' }
-  ], { duration: 560 });
+  ], { duration: 360 });
 }
 
 // Перед перерисовкой экрана (render): подсветки в переключателях замирают там, где их сейчас видно,
