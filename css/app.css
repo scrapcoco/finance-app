@@ -534,3 +534,10 @@ body::before {
 .seg-glow { --glow-radius: 11px; --glow-fill: rgba(255,255,255,0.15); --glow-line: rgba(255,255,255,0.10); }
 .cal-grid > .seg-glow { background: none; border-radius: 0; --glow-radius: 10px; --glow-fill: var(--ink); --glow-line: var(--ink); }
 @media (min-width: 960px) { .tab-glow { --glow-radius: 16px; } }
+
+/* Календарь без рамки: сетка дней лежит прямо на фоне, без карточки, обводки и размытия */
+.cal {
+  background: none; border: none; box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  padding: 4px 0;
+}
