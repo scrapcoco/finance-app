@@ -165,8 +165,12 @@ export function placeGlow(glow, container, to, from, live = false) {
   const start = live && glow._edges ? { ...glow._edges } : from ? edgesOf(from) : null;
   if (!start || reduceMotion.matches) { setEdges(glow, target); return; }
   const right = target.l > start.l, down = target.t > start.t;
+  const movesX = Math.abs(target.l - start.l) > 1, movesY = Math.abs(target.t - start.t) > 1;
+  // По диагонали (в календаре — другой ряд и другой столбец) «резина» по двум осям раздувала квадрат
+  // в большой прямоугольник — там подсветка просто переезжает целиком, не меняя размера
+  const SLIDE = [380, EASE.out];
   // Какой край ведущий: при движении вправо — правый, влево — левый; вниз — нижний, вверх — верхний
-  const spec = {
+  const spec = movesX && movesY ? { l: SLIDE, r: SLIDE, t: SLIDE, b: SLIDE } : {
     l: right ? [TRAIL_MS, EASE.inOut] : [LEAD_MS, EASE.out],
     r: right ? [LEAD_MS, EASE.out] : [TRAIL_MS, EASE.inOut],
     t: down ? [TRAIL_MS, EASE.inOut] : [LEAD_MS, EASE.out],
