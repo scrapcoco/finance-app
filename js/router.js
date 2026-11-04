@@ -8,7 +8,6 @@ import { homeScreen } from './screens/home.js';
 import { addScreen, editScreen } from './screens/form.js';
 import { calendarScreen } from './screens/calendar.js';
 import { historyScreen } from './screens/history.js';
-import { reportsScreen } from './screens/reports.js';
 import { debtsScreen } from './screens/debts.js';
 import { settingsScreen } from './screens/settings.js';
 import { overviewScreen } from './screens/overview.js';
@@ -19,7 +18,6 @@ export const TABS = [
   { r: 'overview', label: 'Обзор', icon: ICON.pie },
   { r: 'calendar', label: 'Платежи', icon: ICON.cal },
   { r: 'add', label: 'Новая запись', icon: ICON.plus, add: true },
-  { r: 'reports', label: 'Отчёты', icon: ICON.chart },
   { r: 'debts', label: 'Долги', icon: ICON.debt },
   { r: 'history', label: 'История', icon: ICON.list, desk: true },
   { r: 'settings', label: 'Настройки', icon: ICON.gear, desk: true }
@@ -77,7 +75,7 @@ export function parseRoute() {
 
 const ROUTES = {
   '': homeScreen, add: addScreen, edit: editScreen, calendar: calendarScreen,
-  overview: overviewScreen, history: historyScreen, reports: reportsScreen, debts: debtsScreen, settings: settingsScreen
+  overview: overviewScreen, history: historyScreen, debts: debtsScreen, settings: settingsScreen
 };
 
 // На главную: смена hash сама вызовет render (hashchange); если уже на главной — рисуем вручную. Без двойной отрисовки.
@@ -97,6 +95,8 @@ export async function render() {
     return viewLogin();
   }
   const route = parseRoute();
+  // «Отчёты» теперь часть «Обзора»: старые ссылки и закладки ведут туда (replace — без лишнего шага «назад»)
+  if (route.name === 'reports') { location.replace('#/overview'); return; }
   const fn = ROUTES[route.name] || ROUTES[''];
   // data-screen — по нему CSS раскладывает экран на ПК в колонки. Ставим вместе с новым содержимым,
   // иначе старый экран на миг перестроится в чужие колонки — отсюда и «дёрганье»

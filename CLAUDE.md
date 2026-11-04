@@ -31,8 +31,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `screens/form.js` | `addScreen`, `editScreen`, `viewForm`, `viewAdjust` (корректировка), `newCategorySheet` |
 | `screens/calendar.js` | `calendarScreen` — сетка месяца, «Отметить оплаченным» |
 | `screens/history.js` | `historyScreen` — оплаченные записи по месяцам, фильтр, «Показать ещё» (по 50) |
-| `screens/overview.js` | `overviewScreen` — обзор месяца: плитки, кольцо по категориям (6 цветов, проверены валидатором), кольцо «доход месяца», цифры, крупные траты |
-| `screens/reports.js` | `reportsScreen` — день/неделя/месяц, график за полгода, категории |
+| `screens/overview.js` | `overviewScreen` — «Обзор» (бывшие «Отчёты»): день/неделя/месяц, плитки, кольцо по категориям (6 цветов без голубого/оранжевого, проверены валидатором), кольцо «доход периода», цифры, график за полгода, крупные траты. `#/reports` ведёт сюда же |
 | `screens/debts.js` | `debtsScreen`, `debtSheet` — прогресс и прогноз погашения |
 | `screens/settings.js` | `settingsScreen`, `fieldSheet`, `deleteAccountSheet` |
 | `screens/push.js` | `mountPushBlock` — блок push-напоминаний в настройках |
@@ -48,7 +47,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 Отклик на нажатие (`ui.js`, pointerdown): «тик» через Web Audio (выключатель «Звук нажатий» в настройках, localStorage `clickSound`)
 и пружинка через свойство `scale`. Новый экран: блоки выезжают по очереди (`.view-enter > *` в app.css).
 
-Маршруты — hash: `#/`, `#/add?kind=&date=&debt=&back=`, `#/edit/<id>`, `#/calendar`, `#/history`, `#/reports`, `#/debts`, `#/settings`.
+Маршруты — hash: `#/`, `#/add?kind=&date=&debt=&back=`, `#/edit/<id>`, `#/calendar`, `#/history`, `#/overview` (`#/reports` — то же), `#/debts`, `#/settings`.
 
 ## Данные (коллекции PocketBase)
 
