@@ -461,7 +461,7 @@ a { color: var(--soft); }
   /* Подпись остаётся для экранных читалок, но не видна */
   .tab > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .tab.desk-only { display: flex; }
-  .tab[href="#/history"] { margin-top: auto; } /* История и Настройки — внизу полоски */
+  .tab[href="#/records"] { margin-top: auto; } /* Записи и Настройки — внизу полоски */
   .tab:hover { color: var(--ink); background: rgba(255,255,255,0.06); }
   .tab-glow { --glow-radius: 16px; }
   /* Подсказка с названием при наведении (и при фокусе с клавиатуры) — справа от значка */
@@ -578,3 +578,92 @@ a { color: var(--soft); }
   .view[data-screen="project"] > .head, .view[data-screen="project"] > .pj-sub, .view[data-screen="project"] > .ov-stats, .view[data-screen="project"] > .ov-top { grid-column: 1 / -1; }
   .view[data-screen="project"] .bars { height: 200px; }
 }
+
+/* ===== Записи (ПК): таблица. На виду — строки, итоги, поиск; фильтры, галочки и быстрое добавление — тихие ===== */
+.view[data-screen="records"] { max-width: 1320px; padding-bottom: 104px; } /* место под полоской действий */
+.rec-tools { display: grid; grid-template-columns: minmax(0, 1fr) 300px auto; gap: 12px; align-items: center; }
+.rec-filters { display: flex; gap: 2px; }
+.rec-filter select {
+  appearance: none; -webkit-appearance: none; background: transparent; border: none; cursor: pointer;
+  color: var(--dim); font-size: 13px; font-weight: 600; padding: 8px 10px; border-radius: 10px; max-width: 160px; field-sizing: content;
+}
+.rec-filter select:hover { color: var(--soft); background: rgba(255,255,255,0.05); }
+.rec-filter.on select { color: var(--ink); background: rgba(255,255,255,0.08); }
+.rec-filter select option, .rec-bulk option, .rec-bulk optgroup, .rec-new option { background: #0E1A28; color: var(--ink); }
+.rec-sum { display: flex; gap: 28px; align-items: baseline; flex-wrap: wrap; font-size: 16px; padding: 0 4px; }
+.rec-sum .k { font-size: 12px; font-weight: 600; color: var(--muted); margin-right: 4px; }
+.rec-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.rec-layout.open { grid-template-columns: minmax(0, 1fr) 340px; }
+.rec-table { padding: 4px 0; }
+.rec-row {
+  display: grid; grid-template-columns: var(--rec-cols); gap: 14px; align-items: center;
+  min-height: 46px; padding: 0 18px; border-bottom: 1px solid var(--line); font-size: 14px; cursor: pointer;
+}
+.rec-table > :last-child { border-bottom: none; }
+.rec-table > .empty { padding: 18px; }
+.rec-row[data-id]:hover { background: rgba(255,255,255,0.04); }
+.rec-row.sel { background: rgba(185,201,250,0.07); }
+.rec-row.open { background: rgba(255,255,255,0.08); }
+.rec-row:focus-visible { outline: 2px solid var(--toggle); outline-offset: -2px; }
+.rec-th { min-height: 38px; cursor: default; font-size: 12px; font-weight: 600; color: var(--dim); }
+.rec-th button { background: none; border: none; padding: 0; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.rec-th button:hover { color: var(--soft); }
+.rec-th .r { text-align: right; }
+.rec-arrow { margin-left: 4px; color: var(--soft); }
+.rec-date { color: var(--muted); font-size: 13px; white-space: nowrap; }
+.rec-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-muted { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-muted .pj-dot { width: 8px; height: 8px; margin-right: 4px; }
+.rec-amt { text-align: right; font-weight: 700; white-space: nowrap; }
+.rec-row.planned .rec-amt { opacity: .75; }
+.rec-tag { font-size: 11px; font-weight: 700; color: var(--dim); border: 1px solid var(--line-2); border-radius: 6px; padding: 1px 6px; margin-right: 8px; vertical-align: 1px; }
+/* Галочки почти не видны, пока не нужны: проявляются при наведении на строку или когда что-то уже выбрано */
+.rec-ck { width: 16px; height: 16px; margin: 0; accent-color: var(--toggle); opacity: .18; cursor: pointer; transition: opacity .15s; vertical-align: middle; }
+.rec-row:hover .rec-ck, .rec-ck:checked, .rec-ck:focus-visible, .rec-table.has-sel .rec-ck { opacity: 1; }
+/* Быстрое добавление: тихая строка без рамок, линия под полем — только при фокусе */
+.rec-new { cursor: default; }
+.rec-new input, .rec-new select {
+  min-width: 0; width: 100%; background: transparent; border: none; border-bottom: 1px solid transparent; border-radius: 0;
+  color: var(--ink); font-size: 14px; padding: 6px 0; outline: none; appearance: none; -webkit-appearance: none;
+}
+.rec-new input::placeholder { color: var(--dim); }
+.rec-new select { color: var(--dim); cursor: pointer; }
+.rec-new select:disabled { opacity: .4; cursor: default; }
+.rec-new input:focus, .rec-new select:focus { border-bottom-color: rgba(163,185,247,0.55); }
+.rec-new input[type="date"] { color-scheme: dark; color: var(--muted); font-size: 13px; }
+.rec-new input[type="date"]::-webkit-calendar-picker-indicator { margin-left: 2px; opacity: .5; }
+.rec-new:focus-within { background: rgba(255,255,255,0.03); }
+.rec-plus { display: flex; color: var(--dim); }
+.rec-plus svg { width: 16px; height: 16px; }
+.rec-amt-in { display: flex; align-items: center; gap: 6px; }
+.rec-amt-in input { text-align: right; font-weight: 700; }
+#rn-kind { flex: none; width: 24px; height: 24px; padding: 0; border-radius: 7px; border: 1px solid var(--line-2); background: transparent; font-weight: 800; line-height: 1; cursor: pointer; }
+#rn-kind.exp { color: var(--exp); }
+#rn-kind.inc { color: var(--inc); }
+/* Панель правки справа */
+.rec-panel { position: sticky; top: 16px; gap: 14px; }
+.rec-panel[hidden] { display: none; }
+.rec-panel-head { display: flex; align-items: center; justify-content: space-between; }
+.rec-panel-head .icon-btn { width: 36px; height: 36px; }
+.rec-fields { display: flex; flex-direction: column; }
+.rec-fields .frow { min-height: 46px; }
+.rec-panel-more { display: flex; justify-content: space-between; font-size: 13px; }
+.rec-panel-more a { color: var(--muted); }
+.rec-panel-more button { background: none; border: none; padding: 0; font: inherit; color: var(--dim); cursor: pointer; }
+.rec-panel-more button:hover { color: var(--danger); }
+/* Действия с выбранными: полоска появляется внизу, только когда что-то отмечено */
+.rec-bulk {
+  position: fixed; left: calc(50% + 46px); bottom: 24px; transform: translateX(-50%); z-index: 20;
+  display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 18px; border-radius: 16px; font-size: 14px;
+  background: rgba(10,20,32,0.92); border: 1px solid var(--glass-line); box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  animation: rec-bulk-in .25s cubic-bezier(.16,1,.3,1);
+}
+@keyframes rec-bulk-in { from { opacity: 0; translate: 0 12px; } }
+.rec-bulk[hidden] { display: none; }
+.rec-bulk b { margin-right: 6px; white-space: nowrap; }
+.rec-bulk select, .rec-bulk button:not(.icon-btn) {
+  height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-2); background: transparent;
+  color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer; appearance: none; -webkit-appearance: none;
+}
+.rec-bulk .danger { color: var(--danger); border-color: #4A3533; }
+.rec-bulk .icon-btn { width: 36px; height: 36px; }

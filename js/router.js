@@ -14,6 +14,7 @@ import { debtsScreen } from './screens/debts.js';
 import { settingsScreen } from './screens/settings.js';
 import { overviewScreen } from './screens/overview.js';
 import { projectsScreen, projectScreen } from './screens/projects.js';
+import { recordsScreen } from './screens/records.js';
 
 // desk: true — пункт только в боковой панели на ПК (на телефоне туда ведут ссылки с экранов)
 export const TABS = [
@@ -23,7 +24,7 @@ export const TABS = [
   { r: 'add', label: 'Новая запись', icon: ICON.plus, add: true },
   { r: 'debts', label: 'Долги', icon: ICON.debt },
   { r: 'projects', label: 'Проекты', icon: ICON.case, desk: true },
-  { r: 'history', label: 'История', icon: ICON.list, desk: true },
+  { r: 'records', label: 'Записи', icon: ICON.list, desk: true },
   { r: 'settings', label: 'Настройки', icon: ICON.gear, desk: true }
 ];
 
@@ -73,7 +74,8 @@ window.addEventListener('resize', () => {
 let shownScreen = null;
 
 // Карточка проекта подсвечивает пункт «Проекты»
-const tabOf = (name) => (name === 'project' ? 'projects' : name);
+const tabOf = (name) => (name === 'project' ? 'projects' : name === 'history' ? 'records' : name);
+const isDesk = () => matchMedia('(min-width: 960px)').matches;
 
 export function parseRoute() {
   const h = location.hash.replace(/^#\/?/, '');
@@ -85,7 +87,7 @@ export function parseRoute() {
 const ROUTES = {
   '': homeScreen, add: addScreen, edit: editScreen, calendar: calendarScreen,
   overview: overviewScreen, history: historyScreen, debts: debtsScreen, settings: settingsScreen,
-  projects: projectsScreen, project: projectScreen
+  projects: projectsScreen, project: projectScreen, records: recordsScreen
 };
 
 // На главную: смена hash сама вызовет render (hashchange); если уже на главной — рисуем вручную. Без двойной отрисовки.
@@ -95,7 +97,7 @@ export function goHome() {
 }
 
 // Переключатель книг «Личное · Бизнес · Всё» — под шапкой основных экранов
-const BOOK_SCREENS = ['home', 'overview', 'calendar', 'debts', 'history', 'projects'];
+const BOOK_SCREENS = ['home', 'overview', 'calendar', 'debts', 'history', 'projects', 'records'];
 function mountBookBar(screen) {
   const head = $view.querySelector(':scope > .head');
   if (!head || !BOOK_SCREENS.includes(screen)) return;
@@ -124,6 +126,9 @@ export async function render() {
   const route = parseRoute();
   // «Отчёты» теперь часть «Обзора»: старые ссылки и закладки ведут туда (replace — без лишнего шага «назад»)
   if (route.name === 'reports') { location.replace('#/overview'); return; }
+  // На ПК вместо «Истории» — таблица «Записи», на телефоне наоборот (таблица на узком экране не помещается)
+  if (route.name === 'history' && isDesk()) { location.replace('#/records'); return; }
+  if (route.name === 'records' && !isDesk()) { location.replace('#/history'); return; }
   const fn = ROUTES[route.name] || ROUTES[''];
   // data-screen — по нему CSS раскладывает экран на ПК в колонки. Ставим вместе с новым содержимым,
   // иначе старый экран на миг перестроится в чужие колонки — отсюда и «дёрганье»

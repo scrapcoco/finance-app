@@ -33,6 +33,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `screens/history.js` | `historyScreen` — оплаченные записи по месяцам, фильтр, «Показать ещё» (по 50) |
 | `screens/overview.js` | `overviewScreen` — «Обзор» (бывшие «Отчёты»): день/неделя/месяц, плитки, кольцо по категориям (6 цветов без голубого/оранжевого, проверены валидатором), кольцо «доход периода», цифры, график за полгода, крупные траты. `#/reports` ведёт сюда же |
 | `screens/debts.js` | `debtsScreen`, `debtSheet` — прогресс и прогноз погашения |
+| `screens/records.js` | `recordsScreen` — «Записи» на ПК (вместо «Истории»; на телефоне `#/records` ↔ `#/history` переадресуются): таблица месяца, поиск/фильтры/сортировка в `state.rec`, тихая строка быстрого добавления (Enter), панель правки справа, действия над выбранными (категория, проект, «Оплачено», удалить), Esc закрывает панель/снимает выбор. Правило вида: важное на виду, редкое — тихо или по требованию |
 | `screens/projects.js` | `projectsScreen` (проекты книги «Бизнес» по прибыли: рост к прошлому месяцу, маржа, линия за полгода), `projectScreen` (карточка: цифры месяца, год столбиками, кольцо расходов, записи), `projectSheet`. Пункт меню только на ПК, на телефоне — ссылка внизу «Обзора» |
 | `screens/settings.js` | `settingsScreen`, `fieldSheet`, `deleteAccountSheet` |
 | `screens/push.js` | `mountPushBlock` — блок push-напоминаний в настройках |
@@ -48,7 +49,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 Отклик на нажатие (`ui.js`, pointerdown): «тик» через Web Audio (выключатель «Звук нажатий» в настройках, localStorage `clickSound`)
 и пружинка через свойство `scale`. Новый экран: блоки выезжают по очереди (`.view-enter > *` в app.css).
 
-Маршруты — hash: `#/`, `#/add?kind=&date=&debt=&project=&back=`, `#/edit/<id>`, `#/calendar`, `#/history`, `#/overview` (`#/reports` — то же), `#/debts`, `#/projects`, `#/project/<id>`, `#/settings`.
+Маршруты — hash: `#/`, `#/add?kind=&date=&debt=&project=&back=`, `#/edit/<id>`, `#/calendar`, `#/history` (на ПК → `#/records`), `#/overview` (`#/reports` — то же), `#/debts`, `#/projects`, `#/project/<id>`, `#/settings`.
 
 Книги: переключатель «Личное · Бизнес · Всё» (`mountBookBar` в `router.js`, `state.book`, localStorage `book`). У записей, категорий и долгов поле `book` personal|business, пусто = «Личное». Запросы списков — через `withBook()`.
 

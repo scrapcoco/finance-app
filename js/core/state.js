@@ -13,5 +13,7 @@ export const state = {
   histQuery: '',
   ovKind: 'expense',
   debtDir: 'owe',
+  // «Записи» (ПК): поиск, фильтры и сортировка таблицы
+  rec: { q: '', kind: 'all', cat: '', proj: '', status: '', sort: 'date', dir: -1 },
   cache: { cats: null, fields: null, debts: null, projects: null }
 };
