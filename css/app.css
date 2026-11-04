@@ -551,7 +551,14 @@ body::before {
   --glass-blur: blur(10px) saturate(140%);
   --glass-hi: inset 0 1px 0 rgba(255,255,255,0.16), 0 8px 30px rgba(0,0,0,0.12);
 }
-.pair > div { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); }
+/* Все рамки одного оттенка и прозрачности. Блок баланса — как остальные карточки (не плотнее). */
+.hero { background: var(--glass); }
+/* Вложенные плитки (Доходы/Расходы, дата у платежа) лежат на стекле родителя: своя заливка сделала бы их
+   плотнее, поэтому у них только такая же кромка и блик, а заливка прозрачная — на экране они как соседи */
+.pair > div, .datebox {
+  background: transparent; border: 1px solid var(--glass-line);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
+}
 @media (min-width: 960px) {
   /* Главная на ПК: баланс по своей высоте, без пустоты под ним */
   .view[data-screen="home"] { grid-template-rows: auto auto 1fr; }
