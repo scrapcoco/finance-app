@@ -542,67 +542,19 @@ body::before {
 .cal-grid > .seg-glow { background: none; border-radius: 0; --glow-radius: 10px; --glow-fill: var(--ink); --glow-line: var(--ink); }
 @media (min-width: 960px) { .tab-glow { --glow-radius: 16px; } }
 
-/* Календарь без рамки: сетка дней лежит прямо на фоне, без карточки, обводки и размытия */
-.cal {
-  background: none; border: none; box-shadow: none;
-  -webkit-backdrop-filter: none; backdrop-filter: none;
-  padding: 4px 0;
+/* ===== Карточки — очень прозрачное стекло: почти невидимый слой, тонкая светлая кромка и блик сверху.
+   Фон-картинка просвечивает насквозь; размытие лёгкое, чтобы кольца угадывались и под карточками. ===== */
+:root {
+  --glass: rgba(255,255,255,0.035);
+  --glass-strong: rgba(255,255,255,0.05);
+  --glass-line: rgba(255,255,255,0.16);
+  --glass-blur: blur(10px) saturate(140%);
+  --glass-hi: inset 0 1px 0 rgba(255,255,255,0.16), 0 8px 30px rgba(0,0,0,0.12);
 }
-
-/* Календарь целиком без карточек: «К оплате» и записи выбранного дня тоже лежат прямо на фоне */
-.view[data-screen="calendar"] .stat,
-.view[data-screen="calendar"] > .sec .list {
-  background: none; border: none; box-shadow: none; border-radius: 0;
-  -webkit-backdrop-filter: none; backdrop-filter: none;
-}
-.view[data-screen="calendar"] .stat { padding: 0; }
-.view[data-screen="calendar"] > .sec .list { padding: 0; }
-.view[data-screen="calendar"] > .sec .list .empty { padding: 6px 0; }
-
-/* Календарь: блоки разделены тонкими линиями вместо рамок */
-.view[data-screen="calendar"] > .stats,
-.view[data-screen="calendar"] > .cal { padding-bottom: 16px; border-bottom: 1px solid var(--line); border-radius: 0; }
+.pair > div { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); }
 @media (min-width: 960px) {
-  /* На ПК календарь и записи дня рядом: под сеткой линии нет, между колонками — вертикальная */
-  .view[data-screen="calendar"] > .cal { border-bottom: none; padding-bottom: 0; }
-  .view[data-screen="calendar"] > .sec { align-self: stretch; border-left: 1px solid var(--line); padding-left: 24px; }
-}
-
-/* Отчёты без рамок: плашки сумм, график и категории лежат на фоне, разделены тонкими линиями */
-.view[data-screen="reports"] .stat,
-.view[data-screen="reports"] > .panel {
-  background: none; border: none; box-shadow: none; border-radius: 0;
-  -webkit-backdrop-filter: none; backdrop-filter: none;
-}
-.view[data-screen="reports"] .stat { padding: 0; }
-.view[data-screen="reports"] > .panel { padding: 0; }
-.view[data-screen="reports"] > .stats,
-.view[data-screen="reports"] > .panel:not(:last-child) { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
-@media (min-width: 960px) {
-  /* На ПК график и категории рядом: между ними вертикальная линия */
-  .view[data-screen="reports"] > .panel:not(:last-child) { border-bottom: none; padding-bottom: 0; }
-  .view[data-screen="reports"] > .panel:last-child { align-self: stretch; border-left: 1px solid var(--line); padding-left: 24px; }
-}
-
-/* ===== Без рамок везде: содержимое лежит прямо на фоне, блоки разделены тонкими линиями и заголовками.
-   Рамки остаются только у элементов управления: переключатели, кнопки, чипы, меню, окна. ===== */
-.hero, .list, .panel, .stat, .debt, .form-list, .amount-box, .pair > div, .cal {
-  background: none; border: none; box-shadow: none; border-radius: 0;
-  -webkit-backdrop-filter: none; backdrop-filter: none;
-}
-.list, .form-list, .panel, .stat, .pair > div { padding: 0; }
-.hero { padding: 0 0 20px; border-bottom: 1px solid var(--line); }
-.amount-box { padding: 4px 0 12px; border-bottom: 1px solid var(--line); }
-.debt { padding: 4px 0 18px; border-bottom: 1px solid var(--line); }
-/* Поля формы: линия и под последним полем, чтобы было видно, где кончается ввод */
-.form-list .frow:last-child { border-bottom: 1px solid var(--line); }
-.list .empty { padding: 8px 0; }
-/* Долги: график отделён от карточек долгов линией */
-.view[data-screen="debts"] > .panel { padding-bottom: 16px; border-bottom: 1px solid var(--line); }
-@media (min-width: 960px) {
-  /* Главная на ПК: баланс по своей высоте, без пустоты под ним; между колонками — вертикальная линия */
+  /* Главная на ПК: баланс по своей высоте, без пустоты под ним */
   .view[data-screen="home"] { grid-template-rows: auto auto 1fr; }
-  .view[data-screen="home"] > .sec-recent { align-self: stretch; border-left: 1px solid var(--line); padding-left: 24px; }
 }
 
 /* ===== Фон — зелёные стеклянные кольца на лавандово-персиковом небе (img/bg-glass-*.jpg, Pexels) =====
