@@ -31,6 +31,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `screens/form.js` | `addScreen`, `editScreen`, `viewForm`, `viewAdjust` (корректировка), `newCategorySheet` |
 | `screens/calendar.js` | `calendarScreen` — сетка месяца, «Отметить оплаченным» |
 | `screens/history.js` | `historyScreen` — оплаченные записи по месяцам, фильтр, «Показать ещё» (по 50) |
+| `screens/overview.js` | `overviewScreen` — обзор месяца: плитки, кольцо по категориям (6 цветов, проверены валидатором), кольцо «доход месяца», цифры, крупные траты |
 | `screens/reports.js` | `reportsScreen` — день/неделя/месяц, график за полгода, категории |
 | `screens/debts.js` | `debtsScreen`, `debtSheet` — прогресс и прогноз погашения |
 | `screens/settings.js` | `settingsScreen`, `fieldSheet`, `deleteAccountSheet` |

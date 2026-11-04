@@ -11,10 +11,12 @@ import { historyScreen } from './screens/history.js';
 import { reportsScreen } from './screens/reports.js';
 import { debtsScreen } from './screens/debts.js';
 import { settingsScreen } from './screens/settings.js';
+import { overviewScreen } from './screens/overview.js';
 
 // desk: true — пункт только в боковой панели на ПК (на телефоне туда ведут ссылки с экранов)
 export const TABS = [
   { r: '', label: 'Главная', icon: ICON.home },
+  { r: 'overview', label: 'Обзор', icon: ICON.pie },
   { r: 'calendar', label: 'Платежи', icon: ICON.cal },
   { r: 'add', label: 'Новая запись', icon: ICON.plus, add: true },
   { r: 'reports', label: 'Отчёты', icon: ICON.chart },
@@ -75,7 +77,7 @@ export function parseRoute() {
 
 const ROUTES = {
   '': homeScreen, add: addScreen, edit: editScreen, calendar: calendarScreen,
-  history: historyScreen, reports: reportsScreen, debts: debtsScreen, settings: settingsScreen
+  overview: overviewScreen, history: historyScreen, reports: reportsScreen, debts: debtsScreen, settings: settingsScreen
 };
 
 // На главную: смена hash сама вызовет render (hashchange); если уже на главной — рисуем вручную. Без двойной отрисовки.

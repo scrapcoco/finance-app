@@ -10,6 +10,7 @@ export const state = {
   repWeek: null,
   histKind: 'all',
   histQuery: '',
+  ovKind: 'expense',
   debtDir: 'owe',
   cache: { cats: null, fields: null, debts: null }
 };

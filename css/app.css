@@ -586,3 +586,52 @@ body::before {
 .sheet { background: rgba(10,20,32,0.86); }
 .tab::after, .tab-add::after { background: rgba(10,20,32,0.94); }
 .frow select option { background: #0E1A28; }
+
+/* ===== Обзор: кольца-диаграммы, легенда, цифры месяца ===== */
+.ov-sub { font-size: 11px; font-weight: 700; color: var(--muted); }
+.ov-muted { font-size: 12px; color: var(--muted); }
+.ov-donut-wrap { display: flex; align-items: center; gap: 20px; }
+.ov-donut { position: relative; width: 168px; height: 168px; flex: none; }
+.ov-donut-wrap.small .ov-donut { width: 132px; height: 132px; }
+.ov-donut svg { width: 100%; height: 100%; display: block; }
+.ov-seg { transition: opacity .2s; cursor: pointer; }
+.ov-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 30px; pointer-events: none; }
+.ov-center b { font-size: 16px; font-weight: 800; line-height: 1.15; }
+.ov-donut-wrap.small .ov-center b { font-size: 20px; }
+.ov-center span { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.ov-legend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ov-legend li { display: grid; grid-template-columns: 10px 1fr auto auto; align-items: center; gap: 8px; padding: 6px 6px; border-radius: 10px; font-size: 13px; cursor: pointer; transition: opacity .2s, background .2s; }
+.ov-legend li i { width: 10px; height: 10px; border-radius: 3px; }
+.ov-legend .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ov-legend .a { font-weight: 700; white-space: nowrap; }
+.ov-legend .p { color: var(--muted); font-size: 12px; min-width: 32px; text-align: right; }
+/* Выбрана категория — остальные приглушены */
+.ov-donut-wrap.focus .ov-seg:not(.on), .ov-donut-wrap.focus .ov-legend li:not(.on) { opacity: .3; }
+.ov-legend li.on { background: rgba(255,255,255,0.06); }
+.ov-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ov-facts > div { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--glass-line); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16); }
+.ov-facts span { font-size: 11px; color: var(--muted); }
+.ov-facts b { font-size: 15px; font-weight: 800; }
+@media (max-width: 420px) {
+  .ov-donut-wrap { flex-direction: column; align-items: stretch; }
+  .ov-donut { align-self: center; }
+  .ov-donut-wrap.small { flex-direction: row; align-items: center; }
+}
+/* Нижнее меню на телефоне: 5 разделов + «+» — кнопки чуть уже */
+@media (max-width: 959px) { .tab { width: 58px; font-size: 10.5px; } }
+@media (min-width: 960px) {
+  .view[data-screen="overview"] { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); column-gap: 24px; align-items: start; }
+  .view[data-screen="overview"] > .head, .view[data-screen="overview"] > .ov-stats, .view[data-screen="overview"] > .ov-top { grid-column: 1 / -1; }
+  .ov-donut { width: 200px; height: 200px; }
+  .ov-center b { font-size: 19px; }
+}
+/* Обзор на телефоне: суммы в плитках не переносятся — «Сбережения» во всю ширину под двумя плитками */
+@media (max-width: 959px) {
+  .ov-stats { grid-template-columns: 1fr 1fr; }
+  .ov-stats > .stat:last-child { grid-column: 1 / -1; }
+}
+.ov-stats .v { white-space: nowrap; }
+/* Малое кольцо: название над суммой, чтобы ничего не обрезалось */
+.ov-donut-wrap.small .ov-legend li { grid-template-columns: 10px 1fr; row-gap: 0; }
+.ov-donut-wrap.small .ov-legend .a { grid-column: 2; font-size: 15px; }
+.ov-donut-wrap.small .ov-legend .n { color: var(--muted); font-weight: 600; }
