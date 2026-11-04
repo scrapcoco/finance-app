@@ -5,7 +5,6 @@ export const state = {
   month: firstOfMonth(new Date()),
   selDay: today(),
   period: 'month',
-  catKind: 'expense',
   repDay: null,
   repWeek: null,
   histKind: 'all',

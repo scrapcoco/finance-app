@@ -4,7 +4,7 @@ import { state } from '../core/state.js';
 import { pb } from '../core/pb.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
 import { ensureDefaults } from '../core/data.js';
-import { render, goHome } from '../router.js';
+import { goHome } from '../router.js';
 
 const TERMS_VERSION = '1';
 
