@@ -35,6 +35,14 @@ export async function getDebts(force) {
   return state.cache.debts;
 }
 
+// Проекты (книга «Бизнес»): активные сверху, по названию
+export async function getProjects(force) {
+  if (!state.cache.projects || force) {
+    state.cache.projects = await pb.collection('projects').getFullList({ filter: ownerFilter(), sort: 'archived,name' });
+  }
+  return state.cache.projects;
+}
+
 export function txBetween(from, to, extra) {
   let f = withBook(ownerFilter()) + ' && ' + pb.filter('date >= {:a} && date < {:b}', { a: `${from} 00:00:00`, b: `${to} 00:00:00` });
   if (extra) f += ` && ${extra}`;

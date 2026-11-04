@@ -13,5 +13,5 @@ export const state = {
   histQuery: '',
   ovKind: 'expense',
   debtDir: 'owe',
-  cache: { cats: null, fields: null, debts: null }
+  cache: { cats: null, fields: null, debts: null, projects: null }
 };

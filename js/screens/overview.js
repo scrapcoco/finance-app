@@ -12,12 +12,12 @@ import { render } from '../router.js';
 // Проверены валидатором палитры на тёмном фоне (все проверки пройдены, CVD ΔE ≥ 8.4, контраст ≥ 3:1).
 // Цвет закреплён за категорией (её место в списке категорий), а не за размером траты.
 // Седьмая и дальше, а также «без категории» — серое «Остальное».
-const SLOTS = ['#199e70', '#c98500', '#d55181', '#9085e9', '#5a9e2a', '#2aa0b5'];
-const OTHER = '#6b7785';
+export const SLOTS = ['#199e70', '#c98500', '#d55181', '#9085e9', '#5a9e2a', '#2aa0b5'];
+export const OTHER = '#6b7785';
 const INC = 'var(--inc)', EXP = 'var(--exp)';
 
 // Кольцо (SVG): сегменты — дуги одной окружности через stroke-dasharray, между ними зазор 2px
-function donut(parts, total, center, id) {
+export function donut(parts, total, center, id) {
   const R = 70, W = 20, C = 2 * Math.PI * R, GAP = parts.length > 1 ? 2.5 : 0;
   let acc = 0;
   const segs = parts.map((p, i) => {
@@ -178,7 +178,9 @@ export async function overviewScreen(route, alive) {
         <div class="meta">${esc([shortDate(txDay(t)), t.note ? t.expand?.category?.name : ''].filter(Boolean).join(', '))}</div></div>
         <div class="amt exp">−${money(t.amount)}</div></a>`).join('')}</div>`
         : '<div class="list"><div class="empty">Трат за этот период нет.</div></div>'}
-    </section>`;
+    </section>
+    ${state.book !== 'personal' ? `<a class="list pj-entry" href="#/projects"><div class="row"><div class="main"><div class="name">Проекты</div>
+      <div class="meta">Прибыль и рост каждого проекта</div></div>${ICON.right}</div></a>` : ''}`;
 
   bindMonthSwitch();
   $view.querySelectorAll('[data-ok]').forEach((b) => b.onclick = () => { state.ovKind = b.dataset.ok; render(); });

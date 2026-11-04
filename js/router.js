@@ -13,6 +13,7 @@ import { historyScreen } from './screens/history.js';
 import { debtsScreen } from './screens/debts.js';
 import { settingsScreen } from './screens/settings.js';
 import { overviewScreen } from './screens/overview.js';
+import { projectsScreen, projectScreen } from './screens/projects.js';
 
 // desk: true — пункт только в боковой панели на ПК (на телефоне туда ведут ссылки с экранов)
 export const TABS = [
@@ -21,6 +22,7 @@ export const TABS = [
   { r: 'calendar', label: 'Платежи', icon: ICON.cal },
   { r: 'add', label: 'Новая запись', icon: ICON.plus, add: true },
   { r: 'debts', label: 'Долги', icon: ICON.debt },
+  { r: 'projects', label: 'Проекты', icon: ICON.case, desk: true },
   { r: 'history', label: 'История', icon: ICON.list, desk: true },
   { r: 'settings', label: 'Настройки', icon: ICON.gear, desk: true }
 ];
@@ -44,6 +46,8 @@ export function renderTabbar(active) {
   const glow = $tabbar.querySelector('.tab-glow');
   const cur = $tabbar.querySelector('.tab[aria-current="page"]');
   if (!cur) { glow.style.opacity = '0'; glowFrom = null; return; }
+  // Пункт только для ПК (Проекты, История) на телефоне не виден — подсветку прячем, иначе она осталась бы на прошлом разделе
+  if (!cur.offsetWidth && $tabbar.offsetWidth) { glow.style.opacity = '0'; glowFrom = null; return; }
   if (!cur.offsetWidth) return; // меню скрыто (форма на телефоне) — подсветка остаётся где была и потом поплывёт оттуда
   const to = { x: cur.offsetLeft, y: cur.offsetTop, w: cur.offsetWidth, h: cur.offsetHeight };
   // live: подсветка уже на экране — едет из того места, где она сейчас (без прыжка в «старую» точку)
@@ -55,18 +59,21 @@ export function renderTabbar(active) {
 matchMedia('(min-width: 960px)').addEventListener('change', () => {
   if (!pb.authStore.isValid) return;
   glowFrom = null;
-  renderTabbar(parseRoute().name);
+  renderTabbar(tabOf(parseRoute().name));
 });
 
 // Окно поменяло размер — края подсветки считаются от размеров меню, ставим её заново (без анимации)
 window.addEventListener('resize', () => {
   if (!pb.authStore.isValid || !$tabbar.querySelector('.tab-glow')) return;
   glowFrom = null;
-  renderTabbar(parseRoute().name);
+  renderTabbar(tabOf(parseRoute().name));
 });
 
 // Плавная смена экрана: новый экран проявляется (анимация — в app.css)
 let shownScreen = null;
+
+// Карточка проекта подсвечивает пункт «Проекты»
+const tabOf = (name) => (name === 'project' ? 'projects' : name);
 
 export function parseRoute() {
   const h = location.hash.replace(/^#\/?/, '');
@@ -77,7 +84,8 @@ export function parseRoute() {
 
 const ROUTES = {
   '': homeScreen, add: addScreen, edit: editScreen, calendar: calendarScreen,
-  overview: overviewScreen, history: historyScreen, debts: debtsScreen, settings: settingsScreen
+  overview: overviewScreen, history: historyScreen, debts: debtsScreen, settings: settingsScreen,
+  projects: projectsScreen, project: projectScreen
 };
 
 // На главную: смена hash сама вызовет render (hashchange); если уже на главной — рисуем вручную. Без двойной отрисовки.
@@ -97,7 +105,7 @@ function mountBookBar(screen) {
     if (state.book === b.dataset.book) return;
     state.book = b.dataset.book;
     try { localStorage.setItem('book', state.book); } catch (e) { /* приватный режим */ }
-    state.cache = { cats: null, fields: state.cache.fields, debts: null };
+    state.cache = { ...state.cache, cats: null, debts: null };
     if (state.book === 'business') await ensureDefaults('business').catch(() => {});
     render();
   });
@@ -128,7 +136,7 @@ export async function render() {
   const withTabs = !['add', 'edit', 'settings'].includes(route.name);
   $tabbar.hidden = false;
   $tabbar.dataset.mobileHidden = String(!withTabs);
-  renderTabbar(route.name);
+  renderTabbar(tabOf(route.name));
   freezeGlows();
   if (!$view.innerHTML.trim()) $view.innerHTML = '<div class="loading">Загрузка…</div>';
   // Старый экран не затемняем: прозрачность слоя со стеклянными карточками — дорогой кадр, из-за него дёргалась подсветка

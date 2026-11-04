@@ -2,9 +2,9 @@
 import { esc, parseAmount, REPEAT_LABEL, pbDate, txDay, today, dayOf } from '../core/util.js';
 import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
-import { CFG, pb, uid } from '../core/pb.js';
+import { CFG, pb, uid, ownerFilter } from '../core/pb.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
-import { getCats, getFields, getDebts, bumpDebtDue, debtKind, afterPaid, paidText, curBook, bookOf, BOOKS } from '../core/data.js';
+import { getFields, getProjects, bumpDebtDue, debtKind, afterPaid, paidText, curBook, bookOf, BOOKS } from '../core/data.js';
 
 export function viewAdjust(tx) {
   $view.innerHTML = `
@@ -45,7 +45,13 @@ export async function editScreen(route, alive) {
 }
 
 export async function viewForm(tx, route, alive) {
-  const [cats, fields, debts] = await Promise.all([getCats(), getFields(), getDebts()]);
+  // Категории и долги — всех книг: книгу записи можно сменить прямо в форме
+  const [cats, fields, debts, projects] = await Promise.all([
+    pb.collection('categories').getFullList({ filter: ownerFilter(), sort: 'sort,name' }),
+    getFields(),
+    pb.collection('debts').getFullList({ filter: ownerFilter(), sort: 'closed,created' }),
+    getProjects()
+  ]);
   if (!alive()) return;
   const p = route.params;
   // Куда вернуться после сохранения, удаления или «✕»: туда, откуда пришли (?back=calendar и т. п.)
@@ -54,12 +60,13 @@ export async function viewForm(tx, route, alive) {
   const f = tx ? {
     kind: tx.kind, amount: String(tx.amount).replace('.', ','), category: tx.category || '', date: txDay(tx),
     note: tx.note || '', planned: tx.status === 'planned', repeat: tx.repeat || 'none', debt: tx.debt || '',
-    extra: { ...(tx.extra || {}) }, book: bookOf(tx)
+    extra: { ...(tx.extra || {}) }, book: bookOf(tx), project: tx.project || ''
   } : {
     kind: presetDebt ? debtKind(presetDebt) : (p.get('kind') || 'expense'), amount: presetDebt?.monthly_payment ? String(presetDebt.monthly_payment).replace('.', ',') : '',
     category: '', date: p.get('date') || today(), note: presetDebt ? presetDebt.name : '',
     planned: p.get('date') ? p.get('date') > today() : false, repeat: 'none', debt: presetDebt?.id || '', extra: {},
-    book: presetDebt ? bookOf(presetDebt) : curBook()
+    book: presetDebt ? bookOf(presetDebt) : (p.get('project') ? 'business' : curBook()),
+    project: projects.some((x) => x.id === p.get('project')) ? p.get('project') : ''
   };
 
   const draw = () => {
@@ -67,6 +74,8 @@ export async function viewForm(tx, route, alive) {
     const kindCats = cats.filter((c) => c.kind === f.kind && bookOf(c) === f.book);
     const openDebts = debts.filter((d) => (!d.closed || d.id === f.debt) && debtKind(d) === f.kind && bookOf(d) === f.book);
     const visibleFields = fields.filter((x) => !x.hidden);
+    // Проект — только у записей «Бизнеса»; архивные не предлагаем (кроме уже выбранного)
+    const pjOpts = f.book === 'business' ? projects.filter((x) => !x.archived || x.id === f.project) : [];
     $view.innerHTML = `
       <div class="head">
         <a class="icon-btn" href="${esc(backHash)}" aria-label="Закрыть">${ICON.close}</a>
@@ -90,6 +99,7 @@ export async function viewForm(tx, route, alive) {
       </div>
       <div class="form-list">
         <div class="frow"><label for="bk">Книга</label><select id="bk">${Object.entries(BOOKS).filter(([k]) => k !== 'all').map(([k, v]) => `<option value="${k}" ${f.book === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+        ${pjOpts.length ? `<div class="frow"><label for="pj">Проект</label><select id="pj"><option value="">Без проекта</option>${pjOpts.map((x) => `<option value="${x.id}" ${f.project === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` : ''}
         <div class="frow"><label for="dt">Дата</label><input id="dt" type="date" value="${esc(f.date)}"></div>
         <div class="frow"><label for="nt">Комментарий</label><input id="nt" maxlength="500" placeholder="Например, аренда" value="${esc(f.note)}"></div>
         <div class="frow">
@@ -135,7 +145,8 @@ export async function viewForm(tx, route, alive) {
       if (!tx && f.date > today() && !f.planned) { f.planned = true; draw(); }
     };
     q('#nt').oninput = (e) => { f.note = e.target.value; };
-    q('#bk').onchange = (e) => { f.book = e.target.value; f.category = ''; f.debt = ''; draw(); };
+    q('#bk').onchange = (e) => { f.book = e.target.value; f.category = ''; f.debt = ''; if (f.book !== 'business') f.project = ''; draw(); };
+    if (q('#pj')) q('#pj').onchange = (e) => { f.project = e.target.value; };
     $view.querySelectorAll('[data-kind]').forEach((b) => b.onclick = () => {
       if (f.kind === b.dataset.kind) return;
       f.kind = b.dataset.kind; f.category = ''; f.debt = ''; draw();
@@ -178,6 +189,7 @@ export async function viewForm(tx, route, alive) {
       kind: f.kind, amount: Math.round(amount * 100) / 100, date: pbDate(f.date || today()),
       category: f.category, note: f.note.trim(), status: f.planned ? 'planned' : 'paid',
       repeat: f.planned ? f.repeat : 'none', debt: f.debt, extra, book: f.book,
+      project: f.book === 'business' ? f.project : '',
       // «Родной» день серии: сохраняем прежний, если дату не трогали (28 февраля у платежа «31-го» остаётся 31-м)
       repeat_day: tx && txDay(tx) === f.date && tx.repeat_day ? tx.repeat_day : dayOf(f.date || today())
     };

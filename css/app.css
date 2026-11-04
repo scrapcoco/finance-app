@@ -556,3 +556,25 @@ a { color: var(--soft); }
   .view[data-screen="home"] > .sec-recent { grid-row: 3 / span 3; }
   .view[data-screen="calendar"] > .sec { grid-row: 3 / span 2; }
 }
+
+/* ===== Проекты (книга «Бизнес») ===== */
+.pj-dot { width: 10px; height: 10px; border-radius: 5px; flex: none; display: inline-block; }
+.head .title .pj-dot { margin-right: 6px; vertical-align: 1px; }
+.pj-spark { width: 84px; height: 26px; flex: none; overflow: visible; }
+.pj-spark line { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 3; }
+.pj-spark polyline { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.pj-num { display: flex; flex-direction: column; align-items: flex-end; min-width: 92px; }
+.pj-num .delta { margin-top: 2px; }
+.pj-archived { opacity: .5; }
+.pj-sub { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pj-color { width: 32px; height: 32px; border-radius: 16px; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.pj-color[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 2px rgba(0,0,0,.35) inset; }
+.pj-entry { text-decoration: none; color: inherit; }
+.pj-entry svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+@media (max-width: 520px) { .pj-spark { display: none; } .pj-num { min-width: 0; } }
+@media (min-width: 960px) {
+  .pj-entry { display: none; }
+  .view[data-screen="project"] { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); column-gap: 24px; align-items: start; }
+  .view[data-screen="project"] > .head, .view[data-screen="project"] > .pj-sub, .view[data-screen="project"] > .ov-stats, .view[data-screen="project"] > .ov-top { grid-column: 1 / -1; }
+  .view[data-screen="project"] .bars { height: 200px; }
+}

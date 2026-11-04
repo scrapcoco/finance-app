@@ -25,7 +25,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `core/util.js` | `esc`, деньги (`money`, `signed`, `parseAmount`), даты (`ymd`, `parseYmd`, `pbDate`, `nextOccurrence`), месяцы, подписи |
 | `core/icons.js` | `ICON` — inline SVG |
 | `core/state.js` | `state`: выбранный месяц/день/период/фильтры + `state.cache` справочников |
-| `core/data.js` | `getCats/getFields/getDebts` (кэш), `txBetween`, `ensureDefaults`, `markPaid`, `bumpDebtDue` |
+| `core/data.js` | книги (`BOOKS`, `curBook`, `bookOf`, `bookFilter`, `withBook`), `getCats/getFields/getDebts/getProjects` (кэш), `txBetween`, `ensureDefaults(book)`, `markPaid`, `bumpDebtDue`, `getBalance` |
 | `screens/login.js` | вход, регистрация по инвайт-коду, `termsSheet`, `COPYRIGHT` |
 | `screens/home.js` | `homeScreen` (баланс, платежи и записи месяца), `cashSheet` |
 | `screens/form.js` | `addScreen`, `editScreen`, `viewForm`, `viewAdjust` (корректировка), `newCategorySheet` |
@@ -33,6 +33,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `screens/history.js` | `historyScreen` — оплаченные записи по месяцам, фильтр, «Показать ещё» (по 50) |
 | `screens/overview.js` | `overviewScreen` — «Обзор» (бывшие «Отчёты»): день/неделя/месяц, плитки, кольцо по категориям (6 цветов без голубого/оранжевого, проверены валидатором), кольцо «доход периода», цифры, график за полгода, крупные траты. `#/reports` ведёт сюда же |
 | `screens/debts.js` | `debtsScreen`, `debtSheet` — прогресс и прогноз погашения |
+| `screens/projects.js` | `projectsScreen` (проекты книги «Бизнес» по прибыли: рост к прошлому месяцу, маржа, линия за полгода), `projectScreen` (карточка: цифры месяца, год столбиками, кольцо расходов, записи), `projectSheet`. Пункт меню только на ПК, на телефоне — ссылка внизу «Обзора» |
 | `screens/settings.js` | `settingsScreen`, `fieldSheet`, `deleteAccountSheet` |
 | `screens/push.js` | `mountPushBlock` — блок push-напоминаний в настройках |
 | `screens/ingest.js` | `mountIngestBlock` — ключ для записи расходов с iPhone (Apple Pay → Быстрая команда) |
@@ -47,7 +48,9 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 Отклик на нажатие (`ui.js`, pointerdown): «тик» через Web Audio (выключатель «Звук нажатий» в настройках, localStorage `clickSound`)
 и пружинка через свойство `scale`. Новый экран: блоки выезжают по очереди (`.view-enter > *` в app.css).
 
-Маршруты — hash: `#/`, `#/add?kind=&date=&debt=&back=`, `#/edit/<id>`, `#/calendar`, `#/history`, `#/overview` (`#/reports` — то же), `#/debts`, `#/settings`.
+Маршруты — hash: `#/`, `#/add?kind=&date=&debt=&project=&back=`, `#/edit/<id>`, `#/calendar`, `#/history`, `#/overview` (`#/reports` — то же), `#/debts`, `#/projects`, `#/project/<id>`, `#/settings`.
+
+Книги: переключатель «Личное · Бизнес · Всё» (`mountBookBar` в `router.js`, `state.book`, localStorage `book`). У записей, категорий и долгов поле `book` personal|business, пусто = «Личное». Запросы списков — через `withBook()`.
 
 ## Данные (коллекции PocketBase)
 
@@ -57,11 +60,13 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 - `transactions`: `kind` income|expense|adjust, `amount`, `date`, `category`→categories, `note`,
   `status` planned|paid, `repeat` none|weekly|monthly|yearly, `repeat_day` (1–31, «родной» день серии; пусто = день из даты),
   `debt`→debts, `extra` (json: id поля → значение)
-- `categories`: `name`, `kind` income|expense, `sort`
+- `categories`: `name`, `kind` income|expense, `sort`, `book`
 - `custom_fields`: `label`, `field_type` text|number|select|date|bool|url, `options`, `sort`, `hidden`
-- `debts`: `name`, `total`, `monthly_payment`, `next_due`, `note`, `closed`, `direction` owe|lent (пусто = owe)
+- `debts`: `name`, `total`, `monthly_payment`, `next_due`, `note`, `closed`, `direction` owe|lent (пусто = owe), `book`
+- `projects`: `name`, `kind` online|physical|other, `color`, `archived`, `note`; у `transactions` — `book` и `project`→projects (только у «Бизнеса»)
 - `push_subscriptions`: `endpoint`, `p256dh`, `auth`, `device`
-- `balances` (view, только чтение): `id` = id пользователя, `balance` — сумма оплаченных; клиент читает через `getBalance()`
+- `book_balances` (view): строка на книгу (`owner`, `book`, `balance`); `getBalance()` читает её, в режиме «Всё» складывает
+- `balances` (view, только чтение, для старой версии сайта): `id` = id пользователя, `balance` — сумма оплаченных; клиент читает через `getBalance()`
   в `core/data.js` (при 404 — старый подсчёт по всем записям)
 - `users`: + `invite`, `terms_version`, `ingest_key_hash` (скрытое, sha256 ключа для iPhone)
 
