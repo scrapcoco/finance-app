@@ -547,3 +547,12 @@ a { color: var(--soft); }
 @media (prefers-reduced-motion: reduce) {
   .view.view-enter .bar, .view.view-enter .meter > i, .view.view-enter .ov-reveal { animation: none; }
 }
+
+/* Переключатель книг «Личное · Бизнес · Всё» (вставляет router.js под шапкой экрана) */
+.book-bar { max-width: 360px; }
+@media (min-width: 960px) {
+  .view > .book-bar { grid-column: 1 / -1; }
+  .view[data-screen="home"] { grid-template-rows: auto auto auto auto 1fr; }
+  .view[data-screen="home"] > .sec-recent { grid-row: 3 / span 3; }
+  .view[data-screen="calendar"] > .sec { grid-row: 3 / span 2; }
+}

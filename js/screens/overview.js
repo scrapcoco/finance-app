@@ -5,7 +5,7 @@ import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { pb, ownerFilter } from '../core/pb.js';
 import { $view, monthSwitch, bindMonthSwitch } from '../ui.js';
-import { txBetween, getCats, getDebts } from '../core/data.js';
+import { txBetween, getCats, getDebts, withBook } from '../core/data.js';
 import { render } from '../router.js';
 
 // Цвета категорий: 6 слотов без голубого и оранжевого — эти два цвета в приложении значат «доход» и «расход».
@@ -71,7 +71,7 @@ export async function overviewScreen(route, alive) {
     txBetween(qFrom, qTo),
     getCats(),
     getDebts(),
-    pb.collection('transactions').getFullList({ filter: `${ownerFilter()} && status = 'paid' && debt != ''`, fields: 'debt,amount' })
+    pb.collection('transactions').getFullList({ filter: withBook(`${ownerFilter()} && status = 'paid' && debt != ''`), fields: 'debt,amount' })
   ]);
   if (!alive()) return;
 

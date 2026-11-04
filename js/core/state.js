@@ -8,6 +8,8 @@ export const state = {
   repDay: null,
   repWeek: null,
   histKind: 'all',
+  // Книга: personal | business | all (запоминается между запусками)
+  book: (() => { try { return localStorage.getItem('book') || 'personal'; } catch (e) { return 'personal'; } })(),
   histQuery: '',
   ovKind: 'expense',
   debtDir: 'owe',

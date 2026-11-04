@@ -4,7 +4,7 @@ import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid, ownerFilter } from '../core/pb.js';
 import { $view, toast, errText, monthSwitch, bindMonthSwitch, txRow, bindPay, openSheet, closeSheet } from '../ui.js';
-import { txBetween, getBalance } from '../core/data.js';
+import { txBetween, getBalance, withBook, curBook } from '../core/data.js';
 import { render } from '../router.js';
 
 export async function homeScreen(route, alive) {
@@ -20,8 +20,8 @@ export async function homeScreen(route, alive) {
     getBalance(),
     txBetween(from, to),
     txBetween(ymd(pm), prevTo, "status = 'paid'"),
-    isCur ? pb.collection('transactions').getList(1, 5, { filter: `${ownerFilter()} && status = 'planned'`, sort: 'date,created', expand: 'category' }) : null,
-    isCur ? pb.collection('transactions').getList(1, recentN, { filter: `${ownerFilter()} && status = 'paid'`, sort: '-date,-created', expand: 'category' }) : null
+    isCur ? pb.collection('transactions').getList(1, 5, { filter: withBook(`${ownerFilter()} && status = 'planned'`), sort: 'date,created', expand: 'category' }) : null,
+    isCur ? pb.collection('transactions').getList(1, recentN, { filter: withBook(`${ownerFilter()} && status = 'paid'`), sort: '-date,-created', expand: 'category' }) : null
   ]);
   if (!alive()) return;
   let inc = 0, exp = 0, plannedNet = 0;
@@ -115,7 +115,7 @@ export function cashSheet(balance) {
       if (delta === 0) { err.textContent = 'Баланс уже равен этой сумме.'; return; }
       try {
         await pb.collection('transactions').create({
-          kind: 'adjust', amount: delta, date: pbDate(today()), status: 'paid', repeat: 'none',
+          kind: 'adjust', amount: delta, book: curBook(), date: pbDate(today()), status: 'paid', repeat: 'none',
           note: s.querySelector('#cn2').value.trim() || 'Остаток на руках', extra: {}, owner: uid()
         });
         closeSheet(); toast('Баланс обновлён'); render();

@@ -4,7 +4,7 @@ import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid } from '../core/pb.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
-import { getCats, getFields, getDebts, bumpDebtDue, debtKind, afterPaid, paidText } from '../core/data.js';
+import { getCats, getFields, getDebts, bumpDebtDue, debtKind, afterPaid, paidText, curBook, bookOf, BOOKS } from '../core/data.js';
 
 export function viewAdjust(tx) {
   $view.innerHTML = `
@@ -54,16 +54,18 @@ export async function viewForm(tx, route, alive) {
   const f = tx ? {
     kind: tx.kind, amount: String(tx.amount).replace('.', ','), category: tx.category || '', date: txDay(tx),
     note: tx.note || '', planned: tx.status === 'planned', repeat: tx.repeat || 'none', debt: tx.debt || '',
-    extra: { ...(tx.extra || {}) }
+    extra: { ...(tx.extra || {}) }, book: bookOf(tx)
   } : {
     kind: presetDebt ? debtKind(presetDebt) : (p.get('kind') || 'expense'), amount: presetDebt?.monthly_payment ? String(presetDebt.monthly_payment).replace('.', ',') : '',
     category: '', date: p.get('date') || today(), note: presetDebt ? presetDebt.name : '',
-    planned: p.get('date') ? p.get('date') > today() : false, repeat: 'none', debt: presetDebt?.id || '', extra: {}
+    planned: p.get('date') ? p.get('date') > today() : false, repeat: 'none', debt: presetDebt?.id || '', extra: {},
+    book: presetDebt ? bookOf(presetDebt) : curBook()
   };
 
   const draw = () => {
-    const kindCats = cats.filter((c) => c.kind === f.kind);
-    const openDebts = debts.filter((d) => (!d.closed || d.id === f.debt) && debtKind(d) === f.kind);
+    // Категории и долги — только книги этой записи
+    const kindCats = cats.filter((c) => c.kind === f.kind && bookOf(c) === f.book);
+    const openDebts = debts.filter((d) => (!d.closed || d.id === f.debt) && debtKind(d) === f.kind && bookOf(d) === f.book);
     const visibleFields = fields.filter((x) => !x.hidden);
     $view.innerHTML = `
       <div class="head">
@@ -87,6 +89,7 @@ export async function viewForm(tx, route, alive) {
         </div>
       </div>
       <div class="form-list">
+        <div class="frow"><label for="bk">Книга</label><select id="bk">${Object.entries(BOOKS).filter(([k]) => k !== 'all').map(([k, v]) => `<option value="${k}" ${f.book === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
         <div class="frow"><label for="dt">Дата</label><input id="dt" type="date" value="${esc(f.date)}"></div>
         <div class="frow"><label for="nt">Комментарий</label><input id="nt" maxlength="500" placeholder="Например, аренда" value="${esc(f.note)}"></div>
         <div class="frow">
@@ -132,6 +135,7 @@ export async function viewForm(tx, route, alive) {
       if (!tx && f.date > today() && !f.planned) { f.planned = true; draw(); }
     };
     q('#nt').oninput = (e) => { f.note = e.target.value; };
+    q('#bk').onchange = (e) => { f.book = e.target.value; f.category = ''; f.debt = ''; draw(); };
     $view.querySelectorAll('[data-kind]').forEach((b) => b.onclick = () => {
       if (f.kind === b.dataset.kind) return;
       f.kind = b.dataset.kind; f.category = ''; f.debt = ''; draw();
@@ -149,7 +153,7 @@ export async function viewForm(tx, route, alive) {
     $view.querySelectorAll('[data-cfb]').forEach((el) => el.onclick = () => {
       f.extra[el.dataset.cfb] = !f.extra[el.dataset.cfb]; el.setAttribute('aria-checked', String(!!f.extra[el.dataset.cfb]));
     });
-    q('#newcat').onclick = () => newCategorySheet(f.kind, (c) => { cats.push(c); f.category = c.id; draw(); });
+    q('#newcat').onclick = () => newCategorySheet(f.kind, (c) => { cats.push(c); f.category = c.id; draw(); }, f.book);
     q('#save').onclick = save;
     if (q('#del')) q('#del').onclick = async () => {
       if (!confirm('Удалить эту запись?')) return;
@@ -173,7 +177,7 @@ export async function viewForm(tx, route, alive) {
     const data = {
       kind: f.kind, amount: Math.round(amount * 100) / 100, date: pbDate(f.date || today()),
       category: f.category, note: f.note.trim(), status: f.planned ? 'planned' : 'paid',
-      repeat: f.planned ? f.repeat : 'none', debt: f.debt, extra,
+      repeat: f.planned ? f.repeat : 'none', debt: f.debt, extra, book: f.book,
       // «Родной» день серии: сохраняем прежний, если дату не трогали (28 февраля у платежа «31-го» остаётся 31-м)
       repeat_day: tx && txDay(tx) === f.date && tx.repeat_day ? tx.repeat_day : dayOf(f.date || today())
     };
@@ -203,7 +207,7 @@ export async function viewForm(tx, route, alive) {
   draw();
 }
 
-export function newCategorySheet(kind, done) {
+export function newCategorySheet(kind, done, book = curBook()) {
   openSheet(`<h2>Новая категория</h2>
     <div class="form-list"><div class="frow"><label for="cn">Название</label><input id="cn" maxlength="60" placeholder="${kind === 'income' ? 'Например, Фриланс' : 'Например, Спорт'}"></div></div>
     <div class="error" id="cerr" role="alert"></div>
@@ -213,7 +217,7 @@ export function newCategorySheet(kind, done) {
       const name = s.querySelector('#cn').value.trim();
       if (!name) { s.querySelector('#cerr').textContent = 'Введи название.'; return; }
       try {
-        const c = await pb.collection('categories').create({ name, kind, sort: 100, owner: uid() });
+        const c = await pb.collection('categories').create({ name, kind, sort: 100, book, owner: uid() });
         state.cache.cats = null; closeSheet(); done(c);
       } catch (e) { s.querySelector('#cerr').textContent = errText(e); }
     };

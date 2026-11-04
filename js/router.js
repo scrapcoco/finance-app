@@ -2,6 +2,8 @@
 import { esc } from './core/util.js';
 import { ICON } from './core/icons.js';
 import { pb } from './core/pb.js';
+import { state } from './core/state.js';
+import { BOOKS, ensureDefaults } from './core/data.js';
 import { $view, $tabbar, errText, closeSheet, placeGlow, freezeGlows } from './ui.js';
 import { viewLogin } from './screens/login.js';
 import { homeScreen } from './screens/home.js';
@@ -84,6 +86,23 @@ export function goHome() {
   else location.hash = '#/';
 }
 
+// Переключатель книг «Личное · Бизнес · Всё» — под шапкой основных экранов
+const BOOK_SCREENS = ['home', 'overview', 'calendar', 'debts', 'history', 'projects'];
+function mountBookBar(screen) {
+  const head = $view.querySelector(':scope > .head');
+  if (!head || !BOOK_SCREENS.includes(screen)) return;
+  head.insertAdjacentHTML('afterend', `<div class="segment book-bar" role="group" aria-label="Книга">${
+    Object.entries(BOOKS).map(([k, v]) => `<button type="button" data-book="${k}" aria-pressed="${state.book === k}">${v}</button>`).join('')}</div>`);
+  $view.querySelectorAll('[data-book]').forEach((b) => b.onclick = async () => {
+    if (state.book === b.dataset.book) return;
+    state.book = b.dataset.book;
+    try { localStorage.setItem('book', state.book); } catch (e) { /* приватный режим */ }
+    state.cache = { cats: null, fields: state.cache.fields, debts: null };
+    if (state.book === 'business') await ensureDefaults('business').catch(() => {});
+    render();
+  });
+}
+
 let renderSeq = 0;
 
 export async function render() {
@@ -117,6 +136,7 @@ export async function render() {
     await fn(route, () => seq === renderSeq);
     if (seq !== renderSeq) return;
     $view.dataset.screen = screen;
+    mountBookBar(screen);
     $view.classList.toggle('no-tabs', !withTabs);
     if (changing) {
       // Перезапуск анимации появления

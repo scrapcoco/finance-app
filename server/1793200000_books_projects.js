@@ -3,7 +3,7 @@
 // - transactions/categories/debts.book: personal | business (пусто у старых записей = personal)
 // - projects: проекты бизнеса (онлайн-продукт, физический бизнес, другое); видно и меняет только владелец
 // - transactions.project → projects (необязательно); при удалении проекта ссылка просто очищается
-// - balances (view): баланс отдельно по каждой книге (строка на пару «пользователь + книга»)
+// - book_balances (view): баланс отдельно по каждой книге; старый balances не трогаем — его читает версия сайта до книг
 const OWN = "owner = @request.auth.id";
 const CREATE = "@request.auth.id != '' && @request.body.owner = @request.auth.id";
 const UPDATE = "owner = @request.auth.id && (@request.body.owner:isset = false || @request.body.owner = @request.auth.id)";
@@ -37,22 +37,16 @@ migrate((app) => {
   tx.fields.add(new RelationField({ name: "project", collectionId: projects.id, cascadeDelete: false, maxSelect: 1 }));
   app.save(tx);
 
-  const balances = app.findCollectionByNameOrId("balances");
-  unmarshal({
+  app.save(new Collection({
+    type: "view",
+    name: "book_balances",
     listRule: OWN, viewRule: OWN,
     viewQuery: "SELECT (owner || '_' || COALESCE(NULLIF(book, ''), 'personal')) AS id, owner, COALESCE(NULLIF(book, ''), 'personal') AS book, " +
       "ROUND(SUM(CASE WHEN kind = 'income' THEN amount WHEN kind = 'expense' THEN -amount ELSE amount END), 2) AS balance " +
       "FROM transactions WHERE status = 'paid' GROUP BY owner, COALESCE(NULLIF(book, ''), 'personal')"
-  }, balances);
-  app.save(balances);
+  }));
 }, (app) => {
-  const balances = app.findCollectionByNameOrId("balances");
-  unmarshal({
-    listRule: "id = @request.auth.id", viewRule: "id = @request.auth.id",
-    viewQuery: "SELECT owner AS id, ROUND(SUM(CASE WHEN kind = 'income' THEN amount WHEN kind = 'expense' THEN -amount ELSE amount END), 2) AS balance " +
-      "FROM transactions WHERE status = 'paid' GROUP BY owner"
-  }, balances);
-  app.save(balances);
+  app.delete(app.findCollectionByNameOrId("book_balances"));
   const tx = app.findCollectionByNameOrId("transactions");
   tx.fields.removeByName("project");
   app.save(tx);

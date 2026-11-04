@@ -5,11 +5,12 @@ import { state } from '../core/state.js';
 import { pb, ownerFilter } from '../core/pb.js';
 import { $view, toast, errText, txRow } from '../ui.js';
 import { render } from '../router.js';
+import { withBook } from '../core/data.js';
 
 export async function historyScreen(route, alive) {
   const PAGE = 50;
   const filter = () => {
-    let f = `${ownerFilter()} && status = 'paid'`;
+    let f = withBook(`${ownerFilter()} && status = 'paid'`);
     if (state.histKind !== 'all') f += ` && ${pb.filter('kind = {:k}', { k: state.histKind })}`;
     const q = state.histQuery.trim();
     if (q) {
