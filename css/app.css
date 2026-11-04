@@ -642,3 +642,15 @@ body::before {
    Мелкий текст ≥ 4,5:1 даже в худшем месте: серый 4,57 · доход 4,66 · расход 4,50 · вторичный 5,80;
    тусклый (прошедшие дни, подсказки в полях) 3,10 — норма для второстепенного. */
 :root { --soft: #E2E0DB; --muted: #CAC8C2; --dim: #A6A5A0; --inc: #B9C9FA; --exp: #F2BC8C; }
+
+/* ===== Одно правило для стекла =====
+   Размытие и заливка — только у того, что лежит прямо на фоне (карточки, меню, переключатели на странице).
+   Всё, что внутри стеклянной карточки, — только тонкая рамка: своё размытие там размывало бы уже
+   размытую карточку (двойное стекло — плотнее и «другое»), а своя заливка ложилась бы вторым слоем. */
+:is(.hero, .list, .panel, .stat, .debt, .form-list, .amount-box, .cal)
+  :is(.segment, .btn.secondary, .icon-btn:not(.ghost), .chip:not(.dashed):not([aria-pressed="true"])) {
+  background: transparent;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  border: 1px solid var(--glass-line);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
+}
