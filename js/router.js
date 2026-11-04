@@ -102,6 +102,9 @@ export async function render() {
   // иначе старый экран на миг перестроится в чужие колонки — отсюда и «дёрганье»
   const screen = ROUTES[route.name] ? (route.name || 'home') : 'home';
   const changing = screen !== shownScreen;
+  // Анимация появления — только при переходе в другой раздел. Класс снимаем сразу: если он останется,
+  // любая перерисовка того же экрана (переключатель, месяц) снова проиграет появление — экран «гаснет» и мигает
+  if (!changing) $view.classList.remove('view-enter');
   // На телефоне в форме и настройках нижнего меню нет; на ПК боковая панель видна всегда (см. app.css)
   const withTabs = !['add', 'edit', 'settings'].includes(route.name);
   $tabbar.hidden = false;
