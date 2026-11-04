@@ -1,7 +1,7 @@
 // Кэширует только оболочку приложения. Данные всегда берутся с сервера.
-const CACHE = 'finance-v42';
+const CACHE = 'finance-v43';
 const SHELL = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/pocketbase.umd.js',
-  'js/main.js', 'js/router.js', 'js/ui.js', 'js/core/pb.js', 'js/core/util.js', 'js/core/icons.js', 'js/core/state.js', 'js/core/data.js', 'js/screens/login.js', 'js/screens/home.js', 'js/screens/form.js', 'js/screens/calendar.js', 'js/screens/history.js', 'js/screens/reports.js', 'js/screens/debts.js', 'js/screens/settings.js', 'js/screens/push.js', 'js/screens/ingest.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'img/bg-violet-1200.jpg', 'img/bg-violet-1920.jpg'];
+  'js/main.js', 'js/router.js', 'js/ui.js', 'js/core/pb.js', 'js/core/util.js', 'js/core/icons.js', 'js/core/state.js', 'js/core/data.js', 'js/screens/login.js', 'js/screens/home.js', 'js/screens/form.js', 'js/screens/calendar.js', 'js/screens/history.js', 'js/screens/reports.js', 'js/screens/debts.js', 'js/screens/settings.js', 'js/screens/push.js', 'js/screens/ingest.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'img/bg-glass-1080.jpg', 'img/bg-glass-1920.jpg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

@@ -605,25 +605,25 @@ body::before {
   .view[data-screen="home"] > .sec-recent { align-self: stretch; border-left: 1px solid var(--line); padding-left: 24px; }
 }
 
-/* ===== Фон — фиолетово-пурпурные волны с зелёным бликом (img/bg-violet-*.jpg, Pexels) =====
-   Картинка сама тёмная и насыщенная, поэтому вуаль лёгкая — только чтобы текст читался на ярком пурпуре слева. */
-:root { --ground: #0A0616; }
+/* ===== Фон — зелёные стеклянные кольца на лавандово-персиковом небе (img/bg-glass-*.jpg, Pexels) =====
+   Картинка светлая, поэтому вуаль плотнее и с холодным синим оттенком — белый текст читается, стекло видно.
+   Телефон — вся вертикальная картинка; ПК — горизонтальный кадр с арками колец. */
+:root { --ground: #071019; }
 body::before {
   background:
-    linear-gradient(180deg, rgba(8,5,20,0.38) 0%, rgba(8,5,20,0.50) 55%, rgba(8,5,20,0.62) 100%),
-    url("../img/bg-violet-1920.jpg") center / cover no-repeat,
+    linear-gradient(180deg, rgba(5,12,22,0.58) 0%, rgba(5,12,22,0.66) 50%, rgba(5,12,22,0.78) 100%),
+    url("../img/bg-glass-1920.jpg") center / cover no-repeat,
     var(--ground);
 }
 @media (max-width: 959px) {
-  /* Телефон: картинка поменьше; кадр левее — там пурпур и волны, зелёный блик остаётся у края */
   body::before {
     background:
-      linear-gradient(180deg, rgba(8,5,20,0.36) 0%, rgba(8,5,20,0.48) 50%, rgba(8,5,20,0.62) 100%),
-      url("../img/bg-violet-1200.jpg") 30% center / cover no-repeat,
+      linear-gradient(180deg, rgba(5,12,22,0.56) 0%, rgba(5,12,22,0.64) 50%, rgba(5,12,22,0.78) 100%),
+      url("../img/bg-glass-1080.jpg") center / cover no-repeat,
       var(--ground);
   }
 }
-/* Окна и подсказки — холодный тёмно-фиолетовый тон под фон */
-.sheet { background: rgba(18,12,38,0.84); }
-.tab::after, .tab-add::after { background: rgba(18,12,38,0.94); }
-.frow select option { background: #160F2C; }
+/* Окна и подсказки — холодный тёмно-синий тон под фон */
+.sheet { background: rgba(10,20,32,0.86); }
+.tab::after, .tab-add::after { background: rgba(10,20,32,0.94); }
+.frow select option { background: #0E1A28; }
