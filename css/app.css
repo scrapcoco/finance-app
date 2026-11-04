@@ -605,25 +605,25 @@ body::before {
   .view[data-screen="home"] > .sec-recent { align-self: stretch; border-left: 1px solid var(--line); padding-left: 24px; }
 }
 
-/* ===== Фон — фото тёплых медных изгибов (img/bg-*.jpg, Pexels) вместо цветных пятен =====
-   Сверху тёмная вуаль: у фото светлая кремовая середина, без вуали белый текст на ней не читается. */
-:root { --ground: #0B0806; }
+/* ===== Фон — фиолетово-пурпурные волны с зелёным бликом (img/bg-violet-*.jpg, Pexels) =====
+   Картинка сама тёмная и насыщенная, поэтому вуаль лёгкая — только чтобы текст читался на ярком пурпуре слева. */
+:root { --ground: #0A0616; }
 body::before {
   background:
-    linear-gradient(180deg, rgba(10,7,5,0.58) 0%, rgba(10,7,5,0.70) 55%, rgba(10,7,5,0.80) 100%),
-    url("../img/bg-1920.jpg") center / cover no-repeat,
+    linear-gradient(180deg, rgba(8,5,20,0.38) 0%, rgba(8,5,20,0.50) 55%, rgba(8,5,20,0.62) 100%),
+    url("../img/bg-violet-1920.jpg") center / cover no-repeat,
     var(--ground);
 }
 @media (max-width: 959px) {
-  /* Телефон: картинка поменьше; кадр сдвинут, чтобы в узкий экран попали оба медных изгиба */
+  /* Телефон: картинка поменьше; кадр левее — там пурпур и волны, зелёный блик остаётся у края */
   body::before {
     background:
-      linear-gradient(180deg, rgba(10,7,5,0.55) 0%, rgba(10,7,5,0.68) 50%, rgba(10,7,5,0.80) 100%),
-      url("../img/bg-1200.jpg") 42% center / cover no-repeat,
+      linear-gradient(180deg, rgba(8,5,20,0.36) 0%, rgba(8,5,20,0.48) 50%, rgba(8,5,20,0.62) 100%),
+      url("../img/bg-violet-1200.jpg") 30% center / cover no-repeat,
       var(--ground);
   }
 }
-/* Окна и подсказки — тёплый тёмный тон под новый фон (раньше были синеватые) */
-.sheet { background: rgba(22,15,11,0.84); }
-.tab::after, .tab-add::after { background: rgba(22,15,11,0.94); }
-.frow select option { background: #1A120D; }
+/* Окна и подсказки — холодный тёмно-фиолетовый тон под фон */
+.sheet { background: rgba(18,12,38,0.84); }
+.tab::after, .tab-add::after { background: rgba(18,12,38,0.94); }
+.frow select option { background: #160F2C; }
