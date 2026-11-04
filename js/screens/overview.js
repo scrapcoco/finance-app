@@ -28,9 +28,13 @@ function donut(parts, total, center, id) {
     acc += len;
     return seg;
   }).join('');
+  // Маска «обводит» кольцо по кругу при входе в раздел (анимация .ov-reveal в app.css; без неё кольцо видно сразу)
   return `<div class="ov-donut" id="${id}">
     <svg viewBox="0 0 180 180" role="img" aria-label="${esc(center.aria)}">
-      <circle r="${R}" cx="90" cy="90" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="${W}"/>${segs}
+      <defs><mask id="${id}-m"><circle class="ov-reveal" r="${R}" cx="90" cy="90" fill="none" stroke="#fff" stroke-width="${W + 4}"
+        stroke-dasharray="440" stroke-dashoffset="0" transform="rotate(-90 90 90)"/></mask></defs>
+      <circle r="${R}" cx="90" cy="90" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="${W}"/>
+      <g mask="url(#${id}-m)">${segs}</g>
     </svg>
     <div class="ov-center"><b>${center.value}</b><span>${esc(center.label)}</span></div>
   </div>`;
