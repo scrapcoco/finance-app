@@ -43,7 +43,7 @@ export function viewLogin(mode = 'login') {
           <label class="afield"><span class="sr">Пароль</span><input name="pw" type="password" autocomplete="current-password" placeholder="Пароль" required></label>
         </div>
         <div class="error" role="alert"></div>
-        <button class="btn" type="submit">Войти</button>
+        ${slideHTML('Войти', 'Входим…')}
       </form>
       <button class="auth-tease" type="button" data-go="login"><small>Уже есть аккаунт?</small><b>Вход</b></button>
     </section>
@@ -59,14 +59,7 @@ export function viewLogin(mode = 'login') {
         </div>
         <label class="check"><input type="checkbox" name="agree"><span>Я прочитал и согласен с <button type="button" class="link-btn inline" data-terms>условиями тестирования</button></span></label>
         <div class="error" role="alert"></div>
-        <div class="slide-submit" data-slide>
-          <span class="slide-fill" aria-hidden="true"></span>
-          <span class="slide-text" aria-hidden="true">Создать аккаунт</span>
-          <button type="button" class="slide-knob" aria-label="Создать аккаунт">
-            <svg class="ar" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <svg class="sp" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="34 50"/></svg>
-          </button>
-        </div>
+        ${slideHTML('Создать аккаунт', 'Создаём…')}
       </form>
       <button class="auth-tease" type="button" data-go="register"><small>Нет аккаунта?</small><b>Регистрация</b></button>
     </section>
@@ -95,18 +88,19 @@ export function viewLogin(mode = 'login') {
     goHome();
   };
 
-  // У регистрации вместо кнопки — «проведи, чтобы создать»: дотянул до конца → отправка формы
-  const slide = mountSlide(fReg.querySelector('[data-slide]'), () => fReg.requestSubmit());
+  // Вместо кнопок — слайдеры: дотянул до конца → отправка формы
+  const slides = new Map([fLogin, fReg].map((f) => [f, mountSlide(f.querySelector('[data-slide]'), () => f.requestSubmit())]));
   // Без кнопки отправки Enter в поле форму не отправляет — отправляем сами
-  fReg.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.target.matches('input:not([type=checkbox])')) { e.preventDefault(); fReg.requestSubmit(); }
-  });
+  for (const f of [fLogin, fReg]) {
+    f.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.matches('input:not([type=checkbox])')) { e.preventDefault(); f.requestSubmit(); }
+    });
+  }
 
   const submit = (form, reg) => async (e) => {
     e.preventDefault();
     const err = form.querySelector('.error');
-    const btn = form.querySelector('button[type=submit]');
-    const setBusy = (on) => { if (reg) slide.busy(on); else btn.disabled = on; };
+    const setBusy = (on) => slides.get(form).busy(on);
     const fail = (msg) => { err.textContent = msg; setBusy(false); };
     const email = form.em.value.trim(), password = form.pw.value;
     err.textContent = '';
@@ -147,9 +141,18 @@ export function viewLogin(mode = 'login') {
 
 // Слайдер «проведи, чтобы…»: кругляш тянется пальцем/мышью, за ним заливка; отпустил дальше 85% — onDone,
 // иначе пружинит назад. Enter/пробел на кругляше — то же самое (клавиатура, экранный диктор).
+const slideHTML = (label, busyLabel) => `<div class="slide-submit" data-slide data-busy="${esc(busyLabel)}">
+          <span class="slide-fill" aria-hidden="true"></span>
+          <span class="slide-text" aria-hidden="true">${esc(label)}</span>
+          <button type="button" class="slide-knob" aria-label="${esc(label)}">
+            <svg class="ar" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="sp" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="34 50"/></svg>
+          </button>
+        </div>`;
+
 function mountSlide(el, onDone) {
   const knob = el.querySelector('.slide-knob'), text = el.querySelector('.slide-text');
-  const label = text.textContent;
+  const label = text.textContent, busyLabel = el.dataset.busy;
   let x = 0, startX = 0, drag = false, locked = false;
   const max = () => el.clientWidth - knob.offsetWidth - 8;
   const place = (v) => { x = v; el.style.setProperty('--x', `${v}px`); el.style.setProperty('--p', String(max() ? v / max() : 0)); };
@@ -176,7 +179,7 @@ function mountSlide(el, onDone) {
     // Пока идёт отправка — кругляш в конце и крутится; ошибка — возвращается в начало
     busy(on) {
       el.classList.toggle('busy', on);
-      text.textContent = on ? 'Создаём…' : label;
+      text.textContent = on ? busyLabel : label;
       if (on) { locked = true; el.classList.add('back'); place(max()); }
       else { locked = false; springBack(); }
     }
