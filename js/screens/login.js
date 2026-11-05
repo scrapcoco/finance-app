@@ -39,8 +39,8 @@ export function viewLogin(mode = 'login') {
         <h1>Вход</h1>
         <p>Войди, чтобы увидеть свои доходы, расходы и платежи.</p>
         <div class="auth-fields">
-          <label class="afield"><span>Email</span><input name="em" type="email" autocomplete="username" required></label>
-          <label class="afield"><span>Пароль</span><input name="pw" type="password" autocomplete="current-password" required></label>
+          <label class="afield"><span class="sr">Email</span><input name="em" type="email" autocomplete="username" placeholder="Email" required></label>
+          <label class="afield"><span class="sr">Пароль</span><input name="pw" type="password" autocomplete="current-password" placeholder="Пароль" required></label>
         </div>
         <div class="error" role="alert"></div>
         <button class="btn" type="submit">Войти</button>
@@ -52,14 +52,21 @@ export function viewLogin(mode = 'login') {
         <h1>Регистрация</h1>
         <p>Создай аккаунт по коду приглашения.</p>
         <div class="auth-fields">
-          <label class="afield"><span>Email</span><input name="em" type="email" autocomplete="email" required></label>
-          <label class="afield"><span>Пароль</span><input name="pw" type="password" autocomplete="new-password" placeholder="Минимум 8 символов" required></label>
-          <label class="afield"><span>Ещё раз</span><input name="pw2" type="password" autocomplete="new-password" required></label>
-          <label class="afield"><span>Код приглашения</span><input name="inv" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
+          <label class="afield"><span class="sr">Email</span><input name="em" type="email" autocomplete="email" placeholder="Email" required></label>
+          <label class="afield"><span class="sr">Пароль</span><input name="pw" type="password" autocomplete="new-password" placeholder="Пароль от 8 символов" required></label>
+          <label class="afield"><span class="sr">Пароль ещё раз</span><input name="pw2" type="password" autocomplete="new-password" placeholder="Пароль ещё раз" required></label>
+          <label class="afield"><span class="sr">Код приглашения</span><input name="inv" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Код приглашения" required></label>
         </div>
         <label class="check"><input type="checkbox" name="agree"><span>Я прочитал и согласен с <button type="button" class="link-btn inline" data-terms>условиями тестирования</button></span></label>
         <div class="error" role="alert"></div>
-        <button class="btn" type="submit">Создать аккаунт</button>
+        <div class="slide-submit" data-slide>
+          <span class="slide-fill" aria-hidden="true"></span>
+          <span class="slide-text" aria-hidden="true">Создать аккаунт</span>
+          <button type="button" class="slide-knob" aria-label="Создать аккаунт">
+            <svg class="ar" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="sp" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="34 50"/></svg>
+          </button>
+        </div>
       </form>
       <button class="auth-tease" type="button" data-go="register"><small>Нет аккаунта?</small><b>Регистрация</b></button>
     </section>
@@ -88,20 +95,29 @@ export function viewLogin(mode = 'login') {
     goHome();
   };
 
+  // У регистрации вместо кнопки — «проведи, чтобы создать»: дотянул до конца → отправка формы
+  const slide = mountSlide(fReg.querySelector('[data-slide]'), () => fReg.requestSubmit());
+  // Без кнопки отправки Enter в поле форму не отправляет — отправляем сами
+  fReg.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.matches('input:not([type=checkbox])')) { e.preventDefault(); fReg.requestSubmit(); }
+  });
+
   const submit = (form, reg) => async (e) => {
     e.preventDefault();
     const err = form.querySelector('.error');
     const btn = form.querySelector('button[type=submit]');
+    const setBusy = (on) => { if (reg) slide.busy(on); else btn.disabled = on; };
+    const fail = (msg) => { err.textContent = msg; setBusy(false); };
     const email = form.em.value.trim(), password = form.pw.value;
     err.textContent = '';
-    if (!email || !password) { err.textContent = 'Введи email и пароль.'; return; }
+    if (!email || !password) return fail('Введи email и пароль.');
     if (reg) {
-      if (password.length < 8) { err.textContent = 'Пароль должен быть не короче 8 символов.'; return; }
-      if (password !== form.pw2.value) { err.textContent = 'Пароли не совпадают.'; return; }
-      if (!form.inv.value.trim()) { err.textContent = 'Введи код приглашения.'; return; }
-      if (!form.agree.checked) { err.textContent = 'Нужно согласиться с условиями тестирования.'; return; }
+      if (password.length < 8) return fail('Пароль должен быть не короче 8 символов.');
+      if (password !== form.pw2.value) return fail('Пароли не совпадают.');
+      if (!form.inv.value.trim()) return fail('Введи код приглашения.');
+      if (!form.agree.checked) return fail('Нужно согласиться с условиями тестирования.');
     }
-    btn.disabled = true;
+    setBusy(true);
     try {
       if (reg) {
         try {
@@ -115,17 +131,54 @@ export function viewLogin(mode = 'login') {
           else if (d.password) err.textContent = 'Пароль должен быть не короче 8 символов.';
           else if (ex.status === 400 || ex.status === 403) err.textContent = 'Неверный код приглашения.';
           else err.textContent = errText(ex);
-          btn.disabled = false;
+          setBusy(false);
           return;
         }
       }
       await enter(email, password);
       if (reg) toast('Аккаунт создан. Добро пожаловать!');
     } catch (ex) {
-      err.textContent = ex.status === 400 ? 'Неверный email или пароль.' : errText(ex);
-      btn.disabled = false;
+      fail(ex.status === 400 ? 'Неверный email или пароль.' : errText(ex));
     }
   };
   fLogin.onsubmit = submit(fLogin, false);
   fReg.onsubmit = submit(fReg, true);
+}
+
+// Слайдер «проведи, чтобы…»: кругляш тянется пальцем/мышью, за ним заливка; отпустил дальше 85% — onDone,
+// иначе пружинит назад. Enter/пробел на кругляше — то же самое (клавиатура, экранный диктор).
+function mountSlide(el, onDone) {
+  const knob = el.querySelector('.slide-knob'), text = el.querySelector('.slide-text');
+  const label = text.textContent;
+  let x = 0, startX = 0, drag = false, locked = false;
+  const max = () => el.clientWidth - knob.offsetWidth - 8;
+  const place = (v) => { x = v; el.style.setProperty('--x', `${v}px`); el.style.setProperty('--p', String(max() ? v / max() : 0)); };
+  const springBack = () => { el.classList.add('back'); place(0); setTimeout(() => el.classList.remove('back'), 360); };
+  const finish = () => { locked = true; el.classList.add('back'); place(max()); onDone(); };
+
+  knob.addEventListener('pointerdown', (e) => {
+    if (locked) return;
+    drag = true; startX = e.clientX - x; knob.setPointerCapture(e.pointerId); el.classList.remove('back');
+  });
+  knob.addEventListener('pointermove', (e) => { if (drag) place(Math.min(max(), Math.max(0, e.clientX - startX))); });
+  const release = () => {
+    if (!drag) return;
+    drag = false;
+    if (x >= max() * 0.85) finish(); else springBack();
+  };
+  knob.addEventListener('pointerup', release);
+  knob.addEventListener('pointercancel', release);
+  knob.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && !locked) { e.preventDefault(); finish(); }
+  });
+
+  return {
+    // Пока идёт отправка — кругляш в конце и крутится; ошибка — возвращается в начало
+    busy(on) {
+      el.classList.toggle('busy', on);
+      text.textContent = on ? 'Создаём…' : label;
+      if (on) { locked = true; el.classList.add('back'); place(max()); }
+      else { locked = false; springBack(); }
+    }
+  };
 }
