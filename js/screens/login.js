@@ -29,29 +29,57 @@ export function termsSheet() {
     <button class="btn" id="tclose">Понятно</button>`, (s) => { s.querySelector('#tclose').onclick = closeSheet; });
 }
 
+// Вход и регистрация — одна стеклянная рамка, разрезанная косой полосой: слева «Вход», справа «Регистрация».
+// Нажатие на свёрнутую сторону сдвигает полосу и открывает её форму (раскладка — в app.css, .auth[data-mode])
 export function viewLogin(mode = 'login') {
   $view.classList.add('no-tabs');
-  const reg = mode === 'register';
-  $view.innerHTML = `<form class="login" id="login" novalidate>
-    <h1>Финансы</h1>
-    <p>${reg ? 'Создай аккаунт по коду приглашения.' : 'Войди, чтобы увидеть свои доходы, расходы и платежи.'}</p>
-    <div class="form-list">
-      <div class="frow"><label for="em">Email</label><input id="em" type="email" autocomplete="${reg ? 'email' : 'username'}" required></div>
-      <div class="frow"><label for="pw">Пароль</label><input id="pw" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}" placeholder="${reg ? 'Минимум 8 символов' : ''}" required></div>
-      ${reg ? `
-      <div class="frow"><label for="pw2">Ещё раз</label><input id="pw2" type="password" autocomplete="new-password" required></div>
-      <div class="frow"><label for="inv">Код приглашения</label><input id="inv" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" required></div>` : ''}
-    </div>
-    ${reg ? `<label class="check"><input type="checkbox" id="agree"><span>Я прочитал и согласен с <button type="button" class="link-btn inline" id="terms">условиями тестирования</button></span></label>` : ''}
-    <div class="error" id="err" role="alert"></div>
-    <button class="btn" type="submit">${reg ? 'Создать аккаунт' : 'Войти'}</button>
-    <button class="link-btn" type="button" id="switch" style="align-self:center">${reg ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Регистрация по приглашению'}</button>
-    <p class="copyright">${esc(COPYRIGHT)}</p>
-  </form>`;
-  const form = document.getElementById('login');
-  const err = document.getElementById('err');
-  document.getElementById('switch').onclick = () => viewLogin(reg ? 'login' : 'register');
-  if (reg) document.getElementById('terms').onclick = termsSheet;
+  $view.innerHTML = `<div class="auth" id="auth" data-mode="${mode === 'register' ? 'register' : 'login'}">
+    <section class="auth-pane auth-login" data-side="login">
+      <form class="auth-form" id="f-login" novalidate>
+        <h1>Вход</h1>
+        <p>Войди, чтобы увидеть свои доходы, расходы и платежи.</p>
+        <div class="auth-fields">
+          <label class="afield"><span>Email</span><input name="em" type="email" autocomplete="username" required></label>
+          <label class="afield"><span>Пароль</span><input name="pw" type="password" autocomplete="current-password" required></label>
+        </div>
+        <div class="error" role="alert"></div>
+        <button class="btn" type="submit">Войти</button>
+      </form>
+      <button class="auth-tease" type="button" data-go="login"><small>Уже есть аккаунт?</small><b>Вход</b></button>
+    </section>
+    <section class="auth-pane auth-register" data-side="register">
+      <form class="auth-form" id="f-register" novalidate>
+        <h1>Регистрация</h1>
+        <p>Создай аккаунт по коду приглашения.</p>
+        <div class="auth-fields">
+          <label class="afield"><span>Email</span><input name="em" type="email" autocomplete="email" required></label>
+          <label class="afield"><span>Пароль</span><input name="pw" type="password" autocomplete="new-password" placeholder="Минимум 8 символов" required></label>
+          <label class="afield"><span>Ещё раз</span><input name="pw2" type="password" autocomplete="new-password" required></label>
+          <label class="afield"><span>Код приглашения</span><input name="inv" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
+        </div>
+        <label class="check"><input type="checkbox" name="agree"><span>Я прочитал и согласен с <button type="button" class="link-btn inline" data-terms>условиями тестирования</button></span></label>
+        <div class="error" role="alert"></div>
+        <button class="btn" type="submit">Создать аккаунт</button>
+      </form>
+      <button class="auth-tease" type="button" data-go="register"><small>Нет аккаунта?</small><b>Регистрация</b></button>
+    </section>
+    <div class="auth-seam" aria-hidden="true"></div>
+  </div>
+  <p class="copyright">${esc(COPYRIGHT)}</p>`;
+
+  const box = document.getElementById('auth');
+  const fLogin = document.getElementById('f-login'), fReg = document.getElementById('f-register');
+  // Свёрнутая форма недоступна с клавиатуры и для экранного диктора; открытая — наоборот, её «заставка» прячется
+  const setMode = (m, focus) => {
+    box.dataset.mode = m;
+    fLogin.inert = m !== 'login'; fReg.inert = m !== 'register';
+    box.querySelector('[data-go="login"]').inert = m === 'login';
+    box.querySelector('[data-go="register"]').inert = m === 'register';
+    if (focus) setTimeout(() => (m === 'login' ? fLogin : fReg).querySelector('input')?.focus({ preventScroll: true }), 420);
+  };
+  setMode(box.dataset.mode);
+  box.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => setMode(b.dataset.go, true); });
+  fReg.querySelector('[data-terms]').onclick = termsSheet;
 
   const enter = async (email, password) => {
     await pb.collection('users').authWithPassword(email, password);
@@ -60,8 +88,9 @@ export function viewLogin(mode = 'login') {
     goHome();
   };
 
-  form.onsubmit = async (e) => {
+  const submit = (form, reg) => async (e) => {
     e.preventDefault();
+    const err = form.querySelector('.error');
     const btn = form.querySelector('button[type=submit]');
     const email = form.em.value.trim(), password = form.pw.value;
     err.textContent = '';
@@ -97,4 +126,6 @@ export function viewLogin(mode = 'login') {
       btn.disabled = false;
     }
   };
+  fLogin.onsubmit = submit(fLogin, false);
+  fReg.onsubmit = submit(fReg, true);
 }
