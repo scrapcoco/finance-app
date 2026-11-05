@@ -5,9 +5,18 @@ import { state } from './state.js';
 import { pb, uid, ownerFilter } from './pb.js';
 import { toast } from '../ui.js';
 
+// ===== Книги: «Личное» / «Бизнес». У старых записей поле book пустое — это «Личное» =====
+export const BOOKS = { personal: 'Личное', business: 'Бизнес', all: 'Всё' };
+// Книга для новых записей (в режиме «Всё» — «Личное»)
+export const curBook = () => (state.book === 'business' ? 'business' : 'personal');
+export const bookOf = (rec) => (rec?.book === 'business' ? 'business' : 'personal');
+// Фильтр PocketBase по текущей книге ('' — все книги)
+export const bookFilter = () => (state.book === 'business' ? "book = 'business'" : state.book === 'all' ? '' : "book != 'business'");
+export const withBook = (f) => { const b = bookFilter(); return b ? `${f} && ${b}` : f; };
+
 export async function getCats(force) {
   if (!state.cache.cats || force) {
-    state.cache.cats = await pb.collection('categories').getFullList({ filter: ownerFilter(), sort: 'sort,name' });
+    state.cache.cats = await pb.collection('categories').getFullList({ filter: withBook(ownerFilter()), sort: 'sort,name' });
   }
   return state.cache.cats;
 }
@@ -21,29 +30,41 @@ export async function getFields(force) {
 
 export async function getDebts(force) {
   if (!state.cache.debts || force) {
-    state.cache.debts = await pb.collection('debts').getFullList({ filter: ownerFilter(), sort: 'closed,created' });
+    state.cache.debts = await pb.collection('debts').getFullList({ filter: withBook(ownerFilter()), sort: 'closed,created' });
   }
   return state.cache.debts;
 }
 
+// Проекты (книга «Бизнес»): активные сверху, по названию
+export async function getProjects(force) {
+  if (!state.cache.projects || force) {
+    state.cache.projects = await pb.collection('projects').getFullList({ filter: ownerFilter(), sort: 'archived,name' });
+  }
+  return state.cache.projects;
+}
+
 export function txBetween(from, to, extra) {
-  let f = `${ownerFilter()} && ` + pb.filter('date >= {:a} && date < {:b}', { a: `${from} 00:00:00`, b: `${to} 00:00:00` });
+  let f = withBook(ownerFilter()) + ' && ' + pb.filter('date >= {:a} && date < {:b}', { a: `${from} 00:00:00`, b: `${to} 00:00:00` });
   if (extra) f += ` && ${extra}`;
   return pb.collection('transactions').getFullList({ filter: f, sort: 'date,created', expand: 'category' });
 }
 
-export async function ensureDefaults() {
-  const cats = await getCats(true);
-  if (cats.length) return;
-  const defs = [
-    ['Жильё', 'expense'], ['Еда', 'expense'], ['Транспорт', 'expense'], ['Подписки', 'expense'],
-    ['Здоровье', 'expense'], ['Другое', 'expense'],
-    ['Зарплата', 'income'], ['Подработка', 'income'], ['Другое', 'income']
-  ];
+// Стартовые категории книги (если в ней ещё нет ни одной)
+const DEFAULT_CATS = {
+  personal: [['Жильё', 'expense'], ['Еда', 'expense'], ['Транспорт', 'expense'], ['Подписки', 'expense'],
+    ['Здоровье', 'expense'], ['Другое', 'expense'], ['Зарплата', 'income'], ['Подработка', 'income'], ['Другое', 'income']],
+  business: [['Реклама', 'expense'], ['Закупка товара', 'expense'], ['Сервисы и софт', 'expense'], ['Зарплаты', 'expense'],
+    ['Налоги', 'expense'], ['Другое', 'expense'], ['Продажи', 'income'], ['Услуги', 'income'], ['Другое', 'income']]
+};
+export async function ensureDefaults(book = 'personal') {
+  const filter = `${ownerFilter()} && ` + (book === 'business' ? "book = 'business'" : "book != 'business'");
+  const has = await pb.collection('categories').getList(1, 1, { filter });
+  if (has.items.length) return;
+  const defs = DEFAULT_CATS[book];
   for (let i = 0; i < defs.length; i++) {
-    await pb.collection('categories').create({ name: defs[i][0], kind: defs[i][1], sort: i, owner: uid() });
+    await pb.collection('categories').create({ name: defs[i][0], kind: defs[i][1], sort: i, book, owner: uid() });
   }
-  await getCats(true);
+  state.cache.cats = null;
 }
 
 // Плановый платёж только что стал оплаченным: создать следующий повтор и сдвинуть срок долга.
@@ -58,6 +79,7 @@ export async function afterPaid(tx) {
     const created = await pb.collection('transactions').create({
       kind: tx.kind, amount: tx.amount, date: pbDate(r.next), category: tx.category || '',
       note: tx.note || '', status: 'planned', repeat: tx.repeat, repeat_day: day, debt: tx.debt || '',
+      book: tx.book || '', project: tx.project || '',
       extra: tx.extra || {}, owner: uid()
     });
     r.createdId = created.id;
@@ -87,11 +109,13 @@ async function undoPaid(tx, r) {
 // Пока коллекции нет (404) — по-старому: сумма всех оплаченных записей.
 export async function getBalance() {
   try {
-    const res = await pb.collection('balances').getList(1, 1, { filter: pb.filter('id = {:o}', { o: uid() }) });
-    return Number(res.items[0]?.balance) || 0;
+    // По книгам (book_balances): строка на каждую книгу; в режиме «Всё» — сумма строк
+    const rows = await pb.collection('book_balances').getFullList({ filter: pb.filter('owner = {:o}', { o: uid() }) });
+    const pick = state.book === 'all' ? rows : rows.filter((r) => r.book === curBook());
+    return Math.round(pick.reduce((s, r) => s + (Number(r.balance) || 0), 0) * 100) / 100;
   } catch (e) {
     if (e?.status !== 404) throw e;
-    const all = await pb.collection('transactions').getFullList({ filter: `${ownerFilter()} && status = 'paid'`, fields: 'kind,amount' });
+    const all = await pb.collection('transactions').getFullList({ filter: withBook(`${ownerFilter()} && status = 'paid'`), fields: 'kind,amount' });
     return Math.round(all.reduce((s, t) => s + net(t), 0) * 100) / 100;
   }
 }

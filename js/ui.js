@@ -109,13 +109,169 @@ export function openSheet(html, bind) {
 
 export function closeSheet() { $sheetRoot.innerHTML = ''; }
 
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $sheetRoot.innerHTML) closeSheet(); });
+// ===== Отклик на нажатие: мягкий «тик» и лёгкое «вдавливание» с пружинкой =====
+// Звук синтезируется Web Audio (без файлов), громкость тихая. Выключается в Настройках → «Звук нажатий».
+// На iPhone звук молчит, если включён беззвучный режим, — так устроен Safari.
+const SOUND_KEY = 'clickSound';
+export const soundOn = () => { try { return localStorage.getItem(SOUND_KEY) !== 'off'; } catch (e) { return true; } };
+export const setSound = (on) => { try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch (e) { /* приватный режим */ } };
+let audio = null, noise = null;
+// «Деревянный» тук: глухой корпус (низкий тон, быстро гаснет) + негармонический обертон (даёт «древесность»)
+// + очень короткий щелчок шума в начале (касание). Всё через мягкий фильтр — без резких высоких.
+function tick(strong) {
+  if (!soundOn()) return;
+  try {
+    audio ||= new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+    const ctx = audio, t = ctx.currentTime;
+    if (!noise) {
+      noise = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.03), ctx.sampleRate);
+      const d = noise.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const out = ctx.createBiquadFilter();
+    out.type = 'lowpass'; out.frequency.value = 2800; out.Q.value = 0.5;
+    out.connect(ctx.destination);
+    const f = strong ? 300 : 450;           // главные действия — ниже, «тяжелее»
+    const vol = strong ? 0.22 : 0.15;
+    const voice = (type, freq, peak, decay) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t);
+      o.frequency.exponentialRampToValueAtTime(freq * 0.9, t + decay); // лёгкое «оседание» тона, как у удара
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+      o.connect(g).connect(out);
+      o.start(t); o.stop(t + decay + 0.02);
+    };
+    voice('triangle', f, vol, strong ? 0.11 : 0.08);      // корпус
+    voice('sine', f * 2.76, vol * 0.35, 0.035);            // обертон деревянного бруска
+    const n = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), ng = ctx.createGain();
+    n.buffer = noise; bp.type = 'bandpass'; bp.frequency.value = strong ? 1400 : 1900; bp.Q.value = 1.4;
+    ng.gain.setValueAtTime(vol * 0.6, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.012);
+    n.connect(bp).connect(ng).connect(out);
+    n.start(t); n.stop(t + 0.03);
+  } catch (e) { /* без звука — не страшно */ }
+}
+const PRESSABLE = 'button, a, .chip';
+const STRONG = '.pay-btn, .tab-add, .btn:not(.secondary):not(.danger)';
+const SPRING = 'cubic-bezier(.34,1.56,.64,1)';
+document.addEventListener('pointerdown', (e) => {
+  const el = e.target.closest(PRESSABLE);
+  if (!el || el.disabled || el.getAttribute('aria-disabled') === 'true') return;
+  tick(el.matches(STRONG));
+  if (reduceMotion.matches) return;
+  // Строки списков — едва заметно, кнопки — сильнее. Свойство scale не мешает transform самих элементов
+  const depth = el.matches('a.row, .row-link') ? 0.985 : el.matches('.day') ? 0.9 : 0.94;
+  const press = el.animate([{ scale: '1' }, { scale: String(depth) }], { duration: 90, easing: 'ease-out', fill: 'forwards' });
+  const release = () => {
+    el.removeEventListener('pointerup', release); el.removeEventListener('pointercancel', release); el.removeEventListener('pointerleave', release);
+    press.cancel();
+    el.animate([{ scale: String(depth) }, { scale: '1' }], { duration: 320, easing: SPRING });
+  };
+  el.addEventListener('pointerup', release); el.addEventListener('pointercancel', release); el.addEventListener('pointerleave', release);
+}, { passive: true });
+
+// Клавиатура: Esc — закрыть окно; N — новая запись; ← / → — месяц (или день/неделя в отчётах).
+// Не мешаем вводу текста и сочетаниям с Ctrl/Cmd/Alt.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $sheetRoot.innerHTML) { closeSheet(); return; }
+  if (e.ctrlKey || e.metaKey || e.altKey || $sheetRoot.innerHTML || !$tabbar.querySelector('.tab')) return;
+  if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+  if (e.code === 'KeyN') { e.preventDefault(); location.hash = '#/add'; return; }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    const d = e.key === 'ArrowLeft' ? '-1' : '1';
+    const b = $view.querySelector(`.head [data-m="${d}"], .head [data-shift="${d}"]`);
+    if (b && !b.disabled) { e.preventDefault(); b.click(); }
+  }
+});
 
 // Плавающая подсветка: выбранная кнопка в любом .segment и выбранный день календаря.
 // Экраны перерисовываются целиком, поэтому прошлое место подсветки помним по aria-label переключателя
 // и при появлении нового переключателя ведём её оттуда к нажатой кнопке.
 const GLOW_BOXES = [['.segment', 'button[aria-pressed="true"]'], ['.cal-grid', '.day[aria-pressed="true"] .n']];
 const glowAt = new Map();
+
+// «Резиновая» подсветка, как в ролике: края двигаются отдельно — передний уходит первым и быстрее,
+// задний догоняет медленнее, поэтому капсула на миг вытягивается в сторону движения и снова сжимается.
+// Работает по обеим осям (нижнее меню и переключатели — вбок, полоска на ПК и строки календаря — вверх-вниз).
+//
+// Как устроено: элемент подсветки занимает весь контейнер, а видимую капсулу вырезает clip-path: inset(...)
+// из четырёх CSS-переменных — отступов краёв (--gt/--gr/--gb/--gl, см. app.css). Каждый край — свой твин
+// со своей длительностью и кривой (как gsap.to в ролике). В отличие от растяжения через scale, обводка
+// и скругления при этом не искажаются.
+//
+// container — элемент, внутри которого подсветка; p = { x, y, w, h } — от его внутреннего края.
+// from — откуда ехать (null — просто встать на место). live — подсветка уже на экране и, возможно, ещё едет:
+// тогда каждый край продолжает из своего текущего положения — быстрые переключения без прыжков.
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const EASE = {
+  out: (t) => 1 - (1 - t) ** 3,                                        // power3.out — передний край: резкий старт
+  inOut: (t) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2)     // power3.inOut — задний край: плавно догоняет
+};
+const LEAD_MS = 300, TRAIL_MS = 440; // в ролике 360 и 550 — у нас чуть быстрее, чтобы рамка не казалась отстающей
+const EDGES = ['t', 'r', 'b', 'l'];
+
+function setEdges(glow, e) {
+  const s = glow.style;
+  s.setProperty('--gt', `${e.t}px`); s.setProperty('--gr', `${e.r}px`);
+  s.setProperty('--gb', `${e.b}px`); s.setProperty('--gl', `${e.l}px`);
+  glow._edges = e;
+}
+
+export function placeGlow(glow, container, to, from, live = false) {
+  const W = container.clientWidth, H = container.clientHeight;
+  const edgesOf = (p) => ({ t: p.y, r: W - p.x - p.w, b: H - p.y - p.h, l: p.x });
+  const target = edgesOf(to);
+  cancelAnimationFrame(glow._raf);
+  glow.style.opacity = '1';
+  const start = live && glow._edges ? { ...glow._edges } : from ? edgesOf(from) : null;
+  if (!start || reduceMotion.matches) { setEdges(glow, target); return; }
+  const right = target.l > start.l, down = target.t > start.t;
+  const movesX = Math.abs(target.l - start.l) > 1, movesY = Math.abs(target.t - start.t) > 1;
+  // По диагонали (в календаре — другой ряд и другой столбец) «резина» по двум осям раздувала квадрат
+  // в большой прямоугольник — там подсветка просто переезжает целиком, не меняя размера
+  const SLIDE = [380, EASE.out];
+  // Какой край ведущий: при движении вправо — правый, влево — левый; вниз — нижний, вверх — верхний
+  const spec = movesX && movesY ? { l: SLIDE, r: SLIDE, t: SLIDE, b: SLIDE } : {
+    l: right ? [TRAIL_MS, EASE.inOut] : [LEAD_MS, EASE.out],
+    r: right ? [LEAD_MS, EASE.out] : [TRAIL_MS, EASE.inOut],
+    t: down ? [TRAIL_MS, EASE.inOut] : [LEAD_MS, EASE.out],
+    b: down ? [LEAD_MS, EASE.out] : [TRAIL_MS, EASE.inOut]
+  };
+  // Отсчёт — от первого нарисованного кадра: если клик совпал с тяжёлым кадром, подсветка не прыгает, а стартует с нуля
+  let t0 = null;
+  const step = (now) => {
+    if (t0 === null) t0 = now;
+    const e = {};
+    let done = true;
+    for (const k of EDGES) {
+      const [ms, ease] = spec[k];
+      const p = Math.min(1, (now - t0) / ms);
+      if (p < 1) done = false;
+      e[k] = start[k] + (target[k] - start[k]) * ease(p);
+    }
+    setEdges(glow, e);
+    if (!done) glow._raf = requestAnimationFrame(step);
+  };
+  setEdges(glow, start);
+  glow._raf = requestAnimationFrame(step);
+}
+
+// Перед перерисовкой экрана (render): подсветки в переключателях замирают там, где они сейчас,
+// и это место запоминается — подсветка в новой разметке поедет именно оттуда, без прыжка назад.
+export function freezeGlows() {
+  for (const [sel] of GLOW_BOXES) {
+    for (const box of document.querySelectorAll(sel)) {
+      const glow = box.querySelector(':scope > .seg-glow');
+      if (!glow || glow.style.opacity !== '1' || !glow._edges) continue;
+      cancelAnimationFrame(glow._raf);
+      const e = glow._edges, W = box.clientWidth, H = box.clientHeight;
+      glowAt.set(box.getAttribute('aria-label') || sel, { x: e.l, y: e.t, w: W - e.l - e.r, h: H - e.t - e.b });
+    }
+  }
+}
 
 function syncGlows() {
   for (const [sel, pick] of GLOW_BOXES) {
@@ -136,14 +292,7 @@ function syncGlows() {
       const now = glow.at;
       if (now && Math.abs(now.x - to.x) < 0.5 && Math.abs(now.y - to.y) < 0.5 && Math.abs(now.w - to.w) < 0.5) continue;
       const from = now || glowAt.get(key);
-      const place = (p) => { glow.style.cssText = `width:${p.w}px;height:${p.h}px;transform:translate(${p.x}px,${p.y}px);opacity:1`; };
-      if (from) {
-        glow.classList.add('still');
-        place(from);
-        void glow.offsetWidth; // зафиксировать старое место, чтобы переход сработал
-        glow.classList.remove('still');
-      }
-      place(to);
+      placeGlow(glow, box, to, from, !!now);
       glow.at = to;
       glowAt.set(key, to);
     }

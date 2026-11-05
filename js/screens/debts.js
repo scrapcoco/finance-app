@@ -4,7 +4,7 @@ import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { pb, uid, ownerFilter } from '../core/pb.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
-import { getDebts } from '../core/data.js';
+import { getDebts, withBook, curBook } from '../core/data.js';
 import { render } from '../router.js';
 
 // Тексты экрана для двух направлений долга
@@ -19,7 +19,7 @@ const dirOf = (d) => (d.direction === 'lent' ? 'lent' : 'owe');
 export async function debtsScreen(route, alive) {
   const [allDebts, pays] = await Promise.all([
     getDebts(true),
-    pb.collection('transactions').getFullList({ filter: `${ownerFilter()} && status = 'paid' && debt != ''`, fields: 'debt,amount,date' })
+    pb.collection('transactions').getFullList({ filter: withBook(`${ownerFilter()} && status = 'paid' && debt != ''`), fields: 'debt,amount,date' })
   ]);
   if (!alive()) return;
   const dir = state.debtDir;
@@ -146,7 +146,7 @@ export function debtSheet(d) {
       const data = { name, total, monthly_payment: monthly, next_due: due ? pbDate(due) : '', note: s.querySelector('#dnote').value.trim(), closed };
       try {
         if (d) await pb.collection('debts').update(d.id, data);
-        else await pb.collection('debts').create({ ...data, direction: dir, owner: uid() });
+        else await pb.collection('debts').create({ ...data, direction: dir, book: curBook(), owner: uid() });
         state.cache.debts = null; closeSheet(); toast(d ? 'Долг сохранён' : 'Долг добавлен'); render();
       } catch (e) { err.textContent = errText(e); }
     };
