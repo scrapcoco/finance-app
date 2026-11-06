@@ -78,7 +78,7 @@ export async function mountTradingCard(alive) {
     : m ? `Ждёт сигнала · до уровня ${n(m.to_signal_pct)}%, торги x${n(m.volx)} из x${n(m.vol_need, 1)}` : 'Ждёт данных';
   const html = `<section class="sec tr-sec"><a class="tr-card" href="#/trading">
       <span class="tr-pulse ${o ? 'live' : ''}" aria-hidden="true"></span>
-      <div class="tr-card-main"><div class="tr-card-title">Торговый бот · ${esc(m?.coin || 'LINK')} <span class="tr-badge">понарошку</span></div>
+      <div class="tr-card-main"><div class="tr-card-title">Торговый бот · ${esc(m?.coin || 'LINK')} <span class="tr-badge">testBalance</span></div>
         <div class="tr-card-line">${line}</div></div>
       <div class="tr-card-num"><div class="${cls(b.profit)}">${usd(b.profit)}</div><small>${b.closed ? `${b.wins} из ${b.closed} в +` : 'нет сделок'}</small></div>
       <span class="tr-chev" aria-hidden="true">›</span>
@@ -189,7 +189,7 @@ export async function tradingScreen(route, alive) {
 
       <div class="tr-hero ${live ? 'live' : ''}">
         <div class="tr-hero-state"><span class="tr-pulse ${live ? 'live' : ''}" aria-hidden="true"></span>
-          ${live ? 'В сделке' : 'Ждёт сигнала'}<span class="tr-hero-sub">${b.dry_run ? 'понарошку' : '⚠️ реальные деньги'} · обновлено ${esc(ago(d.updated))}</span></div>
+          ${live ? 'В сделке' : 'Ждёт сигнала'}<span class="tr-hero-sub">${b.dry_run ? 'testBalance' : '⚠️ реальные деньги'} · обновлено ${esc(ago(d.updated))}</span></div>
         ${live ? b.open.map(tradeCard).join('') : `<p class="tr-hero-text">${esc(waitingText(m))}</p>${m ? rangeBar(m) : ''}`}
       </div>
 
