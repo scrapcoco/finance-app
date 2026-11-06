@@ -880,3 +880,4 @@ a { color: var(--soft); }
 .tr-how summary { cursor: pointer; padding: 12px 0; font-weight: 700; color: var(--soft); }
 .tr-how ol { margin: 0 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: 14px; line-height: 1.45; }
 .tr-how b { color: var(--ink); }
+#trb-code { text-align: left; direction: ltr; padding-left: 12px; }
