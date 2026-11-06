@@ -58,15 +58,16 @@ export async function mountTradingCard(alive) {
 export async function tradingScreen(route, alive) {
   const draw = (d) => {
     if (!d || !d.bot) {
-      $view.innerHTML = `<div class="head"><a class="icon-btn" href="#/projects" aria-label="Назад">${ICON.left}</a><h1>Торговый бот</h1></div>
+      $view.innerHTML = `<div class="head tr-head"><a class="icon-btn" href="#/projects" aria-label="Назад">${ICON.left}</a><h1>Торговый бот</h1></div>
         <div class="list"><div class="empty">${LOCAL ? 'Сторож бота не отвечает. Он работает на Mac: проверь, что Mac не спит и запущен desk_watch.py.'
           : 'Бот пока виден только на Mac, где он работает.'}</div></div>`;
       return;
     }
     const b = d.bot, m = d.market;
+    const evs = (d.events || []).filter((e) => e.bot === (m?.coin || 'LINK'));
     const winPct = b.closed ? Math.round((b.wins / b.closed) * 100) : null;
     $view.innerHTML = `
-      <div class="head"><a class="icon-btn" href="#/projects" aria-label="Назад">${ICON.left}</a>
+      <div class="head tr-head"><a class="icon-btn" href="#/projects" aria-label="Назад">${ICON.left}</a>
         <h1>Бот · ${esc(m?.coin || 'LINK')}</h1></div>
       <div class="tr-note">${b.dry_run ? 'Понарошку — деньги не настоящие' : '⚠️ РЕАЛЬНАЯ торговля'} · обновлено ${esc(ago(d.updated))}${b.state !== 'running' ? ` · бот: ${esc(b.state || '?')}` : ''}</div>
       <div class="stats ov-stats">
@@ -83,8 +84,8 @@ export async function tradingScreen(route, alive) {
             <div class="meta">максимум 4 ч ${m.high4h} · минимум 4 ч ${m.low4h}</div></div></div>` : ''}
       </div></section>
       <section class="sec"><div class="sec-head"><h2>События</h2></div><div class="list">
-        ${d.events.length ? d.events.slice(0, 15).map((e) => `<div class="row"><div class="main"><div class="name">${esc(EV[e.type] || e.type)}</div>
-            <div class="meta">${esc(when(e.at))} · ${esc(e.text)}</div></div></div>`).join('') : '<div class="empty">Пока тихо.</div>'}
+        ${evs.length ? evs.slice(0, 15).map((e) => `<div class="row"><div class="main"><div class="name">${esc(EV[e.type] || e.type)}</div>
+            <div class="meta">${esc(when(e.at))} · ${esc(e.text.replace('тренд down', 'тренд вниз').replace('тренд up', 'тренд вверх'))}</div></div></div>`).join('') : '<div class="empty">Пока тихо.</div>'}
       </div></section>
       <section class="sec"><div class="sec-head"><h2>Закрытые сделки</h2></div><div class="list">
         ${b.trades.length ? b.trades.map((t) => `<div class="row"><div class="main"><div class="name">${esc(t.pair)} · ${esc(t.side)}</div>
