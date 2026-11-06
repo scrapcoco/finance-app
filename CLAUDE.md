@@ -35,7 +35,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `screens/debts.js` | `debtsScreen`, `debtSheet` — прогресс и прогноз погашения |
 | `screens/records.js` | `recordsScreen` — «Записи» на ПК (вместо «Истории»; на телефоне `#/records` ↔ `#/history` переадресуются): таблица месяца, поиск/фильтры/сортировка в `state.rec`, тихая строка быстрого добавления (Enter), панель правки справа, действия над выбранными (категория, проект, «Оплачено», удалить), Esc закрывает панель/снимает выбор. Правило вида: важное на виду, редкое — тихо или по требованию |
 | `screens/projects.js` | `projectsScreen` (проекты книги «Бизнес» по прибыли: рост к прошлому месяцу, маржа, линия за полгода), `projectScreen` (карточка: цифры месяца, год столбиками, кольцо расходов, записи), `projectSheet`. Пункт меню только на ПК, на телефоне — ссылка внизу «Обзора» |
-| `screens/trading.js` | `mountTradingCard` (карточка «Торговый бот · LINK» сверху во вкладке «Проекты»), `tradingScreen` (`#/trading`: баланс, итог, открытая сделка, до сигнала, события, закрытые сделки; обновление раз в 30 с). Данные — `http://127.0.0.1:8099/status.json` от сторожа `~/freqtrade/user_data/desk_watch.py` (только чтение); показывается только при открытии с localhost, на сайте карточки нет |
+| `screens/trading.js` | `mountTradingCard` (карточка «Торговый бот · LINK» сверху во вкладке «Проекты»), `tradingScreen` (`#/trading`: «ждёт сигнала / в сделке» словами, шкалы до уровня и объёма, график 4 ч, шкала сделки, события, закрытые сделки; обновление раз в 30 с), `mountTradingCodeBlock` (Настройки → «Торговый бот»: код доступа), `hasTradingAccess`. Данные — коллекции `trading_status`/`trading_events`, их шлёт Mac (`~/freqtrade/user_data/desk_watch.py`) |
 | `screens/settings.js` | `settingsScreen`, `fieldSheet`, `deleteAccountSheet` |
 | `screens/push.js` | `mountPushBlock` — блок push-напоминаний в настройках |
 | `screens/ingest.js` | `mountIngestBlock` — ключ для записи расходов с iPhone (Apple Pay → Быстрая команда) |
@@ -67,6 +67,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 - `debts`: `name`, `total`, `monthly_payment`, `next_due`, `note`, `closed`, `direction` owe|lent (пусто = owe), `book`
 - `projects`: `name`, `kind` online|physical|other, `color`, `archived`, `note`; у `transactions` — `book` и `project`→projects (только у «Бизнеса»)
 - `push_subscriptions`: `endpoint`, `p256dh`, `auth`, `device`
+- торговый бот: `trading_members` (`user`; создаёт только хук по коду), `trading_status` (одна запись `tradingstatus00`, `data` json), `trading_events` (`type`, `bot`, `text`, `at`); читать могут только участники; `trading_config` закрыт
 - `book_balances` (view): строка на книгу (`owner`, `book`, `balance`); `getBalance()` читает её, в режиме «Всё» складывает
 - `balances` (view, только чтение, для старой версии сайта): `id` = id пользователя, `balance` — сумма оплаченных; клиент читает через `getBalance()`
   в `core/data.js` (при 404 — старый подсчёт по всем записям)
@@ -76,6 +77,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 из оплаченных `transactions` с этим `debt`: «я должен» гасится расходами, «мне должны» — доходами (`debtKind` в `core/data.js`). Рассылка push — `server/remind.py` (systemd-таймер, 9:00); см. `server/README.md`.
 Свои эндпоинты PocketBase — `server/pb_hooks/finance_ingest.pb.js`: `GET/POST/DELETE /api/finance/key` (ключ),
 `POST /api/finance/expense` (заголовок `X-Finance-Key`, тело `{amount, merchant}` → оплаченный расход;
+торговый бот — `server/pb_hooks/finance_trading.pb.js`: `GET /api/finance/trading/access`, `POST /api/finance/trading/code` `{code}`, `POST /api/finance/trading/push` (заголовок `X-Trading-Key`);
 такой же расход за 2 минуты не дублируется — ответ `duplicate: true`).
 
 ## Правила

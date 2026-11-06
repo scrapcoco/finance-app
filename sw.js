@@ -1,5 +1,5 @@
 // Кэширует только оболочку приложения. Данные всегда берутся с сервера.
-const CACHE = 'finance-v64';
+const CACHE = 'finance-v65';
 const SHELL = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/pocketbase.umd.js',
   'js/main.js', 'js/router.js', 'js/ui.js', 'js/core/pb.js', 'js/core/util.js', 'js/core/icons.js', 'js/core/state.js', 'js/core/data.js', 'js/screens/login.js', 'js/screens/home.js', 'js/screens/form.js', 'js/screens/calendar.js', 'js/screens/history.js', 'js/screens/overview.js', 'js/screens/projects.js', 'js/screens/trading.js', 'js/screens/records.js', 'js/screens/debts.js', 'js/screens/settings.js', 'js/screens/push.js', 'js/screens/ingest.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/apple-touch-icon.png', 'img/bg-glass-1080.jpg', 'img/bg-glass-1920.jpg'];
 

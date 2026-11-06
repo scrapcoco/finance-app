@@ -15,10 +15,14 @@ Netlify эту папку не отдаёт (правило в `netlify.toml`), 
 | `1793000000_transactions_repeat_day.js` | `/opt/pocketbase/pb_migrations/` — `transactions.repeat_day`: «родной» день повторяющегося платежа |
 | `1793100000_balances_view.js` | `/opt/pocketbase/pb_migrations/` — view-коллекция `balances`: баланс считает база |
 | `pb_hooks/finance_ingest.pb.js` | `/opt/pocketbase/pb_hooks/` — ключ и приём расходов с iPhone |
+| `1793300000_trading.js` | `/opt/pocketbase/pb_migrations/` — торговый бот: `trading_members`, `trading_status`, `trading_events`, `trading_config` |
+| `pb_hooks/finance_trading.pb.js` | `/opt/pocketbase/pb_hooks/` — доступ к боту по коду, приём сводки с Mac (`X-Trading-Key`) |
+| `trading_push.py` | `/opt/finance-reminders/trading_push.py` — push о сделках бота участникам (раз в минуту) |
+| `finance-trading-push.service` / `.timer` | `/etc/systemd/system/` — запуск `trading_push.py` раз в минуту |
 
 Что **не** кладём в репозиторий (он публичный):
 - `vapid_private.pem` — приватный ключ push-уведомлений, лежит только на сервере рядом с `remind.py`;
-- остальные файлы из `pb_migrations/` — в правилах `users` записан код приглашения;
+- остальные файлы из `pb_migrations/` — в правилах `users` записан код приглашения; `1793300001_trading_secrets.js` — отпечатки кода бота и ключа Mac;
 - email в `finance-reminders.service` — здесь заменён на `YOUR_EMAIL`.
 
 `remind.py` читает базу PocketBase напрямую (`/opt/pocketbase/pb_data/data.db`) и работает от пользователя `pocketbase`.

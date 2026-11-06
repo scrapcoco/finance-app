@@ -1,12 +1,12 @@
-// Торговый бот (Freqtrade, понарошку): карточка во вкладке «Проекты» и экран #/trading.
-// Пока бот работает на Mac: данные берём со сторожа desk_watch.py — http://127.0.0.1:8099/status.json
-// (только чтение, без паролей). Открывается только на этом Mac; на сайте карточки нет.
+// Торговый бот (Freqtrade, понарошку): карточка во вкладке «Проекты», экран #/trading и блок «код доступа» в настройках.
+// Данные шлёт Mac с ботом (desk_watch.py) на сервер: коллекции trading_status / trading_events.
+// Видят только те, кто ввёл код доступа (trading_members; проверка — правила PocketBase и server/pb_hooks/finance_trading.pb.js).
 import { esc } from '../core/util.js';
 import { ICON } from '../core/icons.js';
-import { $view } from '../ui.js';
+import { pb } from '../core/pb.js';
+import { state } from '../core/state.js';
+import { $view, toast, errText } from '../ui.js';
 
-const LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
-const SRC = 'http://127.0.0.1:8099/status.json';
 const HALF = 0.005, GOAL = 0.05; // половина закрывается на +0,5% цены, остаток — до +5%
 
 const n = (v, d = 2) => Number(v).toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -34,16 +34,26 @@ const EV = {
   bot_down: ['exp', 'Бот перестал отвечать']
 };
 
+// Есть ли доступ (кэшируется до выхода из аккаунта)
+export async function hasTradingAccess() {
+  if (state.cache.tradingAccess == null) {
+    state.cache.tradingAccess = await pb.send('/api/finance/trading/access', { method: 'GET' }).then((r) => !!r.access).catch(() => false);
+  }
+  return state.cache.tradingAccess;
+}
+
 async function load() {
-  const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), 4000);
   try {
-    const r = await fetch(SRC, { cache: 'no-store', signal: ctl.signal });
-    return r.ok ? await r.json() : null;
+    const [st, ev] = await Promise.all([
+      pb.collection('trading_status').getOne('tradingstatus00'),
+      pb.collection('trading_events').getList(1, 15, { sort: '-at' })
+    ]);
+    const d = st.data || {};
+    d.updated = st.updated || d.updated;
+    d.events = ev.items.map((e) => ({ at: e.at, type: e.type, bot: e.bot, text: e.text }));
+    return d;
   } catch (e) {
     return null;
-  } finally {
-    clearTimeout(t);
   }
 }
 
@@ -59,7 +69,7 @@ function waitingText(m) {
 
 // Карточка сверху во вкладке «Проекты» (вызывается после отрисовки экрана)
 export async function mountTradingCard(alive) {
-  if (!LOCAL) return;
+  if (!(await hasTradingAccess()) || (alive && !alive())) return;
   const d = await load();
   if (!d || !d.bot || (alive && !alive())) return;
   const b = d.bot, m = d.market, o = b.open[0];
@@ -162,11 +172,13 @@ function tradeCard(o) {
 }
 
 export async function tradingScreen(route, alive) {
+  const allowed = await hasTradingAccess();
+  if (!alive()) return;
   const draw = (d) => {
     if (!d || !d.bot) {
       $view.innerHTML = `<div class="head tr-head"><a class="icon-btn" href="#/projects" aria-label="Назад">${ICON.left}</a><h1>Торговый бот</h1></div>
-        <div class="list"><div class="empty">${LOCAL ? 'Не вижу бота. Он работает на Mac — проверь, что Mac не спит и запущен сторож (desk_watch.py).'
-          : 'Бот пока виден только на Mac, где он работает.'}</div></div>`;
+        <div class="list"><div class="empty">${allowed ? 'Нет свежих данных от бота. Он работает на Mac — проверь, что Mac не спит и запущен сторож (desk_watch.py).'
+          : 'Доступ к боту — по коду. Введи его в «Настройках» → «Торговый бот».'}</div></div>`;
       return;
     }
     const b = d.bot, m = d.market, coin = m?.coin || 'LINK';
@@ -212,7 +224,8 @@ export async function tradingScreen(route, alive) {
         </ol></details>`;
     bindChart();
   };
-  draw(await load());
+  draw(allowed ? await load() : null);
+  if (!allowed) return;
   const tick = async () => { // обновляем раз в 30 с, пока экран открыт
     if (!alive()) return;
     const d = await load();
@@ -221,4 +234,48 @@ export async function tradingScreen(route, alive) {
     setTimeout(tick, 30000);
   };
   setTimeout(tick, 30000);
+}
+
+// «Настройки» → «Торговый бот»: ввод кода доступа
+export async function mountTradingCodeBlock() {
+  const head = $view.querySelector('.head');
+  if (!head || $view.querySelector('#trading-block')) return;
+  const holder = document.createElement('div');
+  holder.id = 'trading-block';
+  holder.style.display = 'contents';
+  const ok = await hasTradingAccess();
+  if (!head.isConnected) return;
+  ($view.querySelector('#ingest-block') || $view.querySelector('#push-block') || head).after(holder);
+  let open = false;
+  const draw = (access) => {
+    const row = `<div class="list"><button type="button" class="row fold-row" id="trb-toggle" aria-expanded="${open}">
+        <div class="main"><div class="name">Торговый бот</div><div class="meta">${access ? 'Доступ открыт — карточка во вкладке «Проекты»' : 'Доступ по коду'}</div></div>
+        ${access ? '<span class="badge" style="color:var(--inc)">Открыт</span>' : ''}<span class="fold-chev">${ICON.down}</span></button></div>`;
+    if (!open) {
+      holder.innerHTML = `<section class="sec">${row}</section>`;
+      holder.querySelector('#trb-toggle').onclick = () => { open = true; draw(access); };
+      return;
+    }
+    holder.innerHTML = `<section class="sec">${row}
+      ${access ? `<div class="list"><div class="empty" style="color:var(--soft)">Доступ открыт. О сделках бота будут приходить уведомления, если они включены выше.</div></div>
+          <a class="btn secondary" href="#/trading">Открыть бота</a>`
+        : `<div class="list"><div class="empty" style="color:var(--soft)">Бот виден только тем, у кого есть код. Код даёт владелец.</div></div>
+          <div class="form-list"><div class="frow"><label for="trb-code">Код</label><input id="trb-code" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="60"></div></div>
+          <button class="btn" id="trb-go">Открыть доступ</button>`}
+    </section>`;
+    holder.querySelector('#trb-toggle').onclick = () => { open = false; draw(access); };
+    const go = holder.querySelector('#trb-go');
+    if (go) go.onclick = async () => {
+      const code = holder.querySelector('#trb-code').value.trim();
+      if (!code) return toast('Введи код');
+      go.disabled = true;
+      try {
+        await pb.send('/api/finance/trading/code', { method: 'POST', body: { code } });
+        state.cache.tradingAccess = true;
+        toast('Доступ открыт');
+        draw(true);
+      } catch (e) { toast(errText(e)); go.disabled = false; }
+    };
+  };
+  draw(ok);
 }
