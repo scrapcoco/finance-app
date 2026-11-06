@@ -7,6 +7,7 @@ import { $view, toast, errText, openSheet, closeSheet, monthSwitch, bindMonthSwi
 import { getProjects } from '../core/data.js';
 import { donut, SLOTS, OTHER } from './overview.js';
 import { render } from '../router.js';
+import { mountTradingCard } from './trading.js';
 
 export const KINDS = { online: 'Онлайн-проект', physical: 'Физический бизнес', other: 'Другое' };
 const sum = (arr, kind) => arr.filter((t) => t.kind === kind).reduce((s, t) => s + t.amount, 0);
@@ -34,6 +35,7 @@ function onlyBusiness() {
     <div class="list"><div class="empty">Проекты — в книге «Бизнес»: там видно прибыль и рост каждого проекта.<br>
       <button class="btn small" id="to-biz" style="margin-top:10px">Перейти в «Бизнес»</button></div></div>`;
   $view.querySelector('#to-biz').onclick = () => document.querySelector('[data-book="business"]')?.click();
+  mountTradingCard();
 }
 
 export async function projectsScreen(route, alive) {
@@ -78,6 +80,7 @@ export async function projectsScreen(route, alive) {
   bindMonthSwitch();
   $view.querySelector('#pj-add').onclick = () => projectSheet(null);
   $view.querySelector('#pj-add-2')?.addEventListener('click', () => projectSheet(null));
+  mountTradingCard(alive);
 }
 
 export async function projectScreen(route, alive) {

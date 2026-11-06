@@ -35,6 +35,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `screens/debts.js` | `debtsScreen`, `debtSheet` — прогресс и прогноз погашения |
 | `screens/records.js` | `recordsScreen` — «Записи» на ПК (вместо «Истории»; на телефоне `#/records` ↔ `#/history` переадресуются): таблица месяца, поиск/фильтры/сортировка в `state.rec`, тихая строка быстрого добавления (Enter), панель правки справа, действия над выбранными (категория, проект, «Оплачено», удалить), Esc закрывает панель/снимает выбор. Правило вида: важное на виду, редкое — тихо или по требованию |
 | `screens/projects.js` | `projectsScreen` (проекты книги «Бизнес» по прибыли: рост к прошлому месяцу, маржа, линия за полгода), `projectScreen` (карточка: цифры месяца, год столбиками, кольцо расходов, записи), `projectSheet`. Пункт меню только на ПК, на телефоне — ссылка внизу «Обзора» |
+| `screens/trading.js` | `mountTradingCard` (карточка «Торговый бот · LINK» сверху во вкладке «Проекты»), `tradingScreen` (`#/trading`: баланс, итог, открытая сделка, до сигнала, события, закрытые сделки; обновление раз в 30 с). Данные — `http://127.0.0.1:8099/status.json` от сторожа `~/freqtrade/user_data/desk_watch.py` (только чтение); показывается только при открытии с localhost, на сайте карточки нет |
 | `screens/settings.js` | `settingsScreen`, `fieldSheet`, `deleteAccountSheet` |
 | `screens/push.js` | `mountPushBlock` — блок push-напоминаний в настройках |
 | `screens/ingest.js` | `mountIngestBlock` — ключ для записи расходов с iPhone (Apple Pay → Быстрая команда) |

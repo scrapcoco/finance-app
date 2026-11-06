@@ -15,6 +15,7 @@ import { settingsScreen } from './screens/settings.js';
 import { overviewScreen } from './screens/overview.js';
 import { projectsScreen, projectScreen } from './screens/projects.js';
 import { recordsScreen } from './screens/records.js';
+import { tradingScreen } from './screens/trading.js';
 
 // desk: true — пункт только в боковой панели на ПК (на телефоне туда ведут ссылки с экранов)
 export const TABS = [
@@ -74,7 +75,7 @@ window.addEventListener('resize', () => {
 let shownScreen = null;
 
 // Карточка проекта подсвечивает пункт «Проекты»
-const tabOf = (name) => (name === 'project' ? 'projects' : name === 'history' ? 'records' : name);
+const tabOf = (name) => (name === 'project' || name === 'trading' ? 'projects' : name === 'history' ? 'records' : name);
 const isDesk = () => matchMedia('(min-width: 960px)').matches;
 
 export function parseRoute() {
@@ -87,7 +88,7 @@ export function parseRoute() {
 const ROUTES = {
   '': homeScreen, add: addScreen, edit: editScreen, calendar: calendarScreen,
   overview: overviewScreen, history: historyScreen, debts: debtsScreen, settings: settingsScreen,
-  projects: projectsScreen, project: projectScreen, records: recordsScreen
+  projects: projectsScreen, project: projectScreen, records: recordsScreen, trading: tradingScreen
 };
 
 // На главную: смена hash сама вызовет render (hashchange); если уже на главной — рисуем вручную. Без двойной отрисовки.
