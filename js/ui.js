@@ -107,7 +107,7 @@ export function openSheet(html, bind) {
   if (first) setTimeout(() => first.focus(), 50);
 }
 
-export function closeSheet() { $sheetRoot.innerHTML = ''; }
+export function closeSheet() { $sheetRoot.innerHTML = ''; document.documentElement.classList.remove('asst-open'); }
 
 // ===== Отклик на нажатие: мягкий «тик» и лёгкое «вдавливание» с пружинкой =====
 // Звук синтезируется Web Audio (без файлов), громкость тихая. Выключается в Настройках → «Звук нажатий».

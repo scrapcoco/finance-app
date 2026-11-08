@@ -62,13 +62,32 @@ export function openAssistant(fromBtn) {
   bd.addEventListener('click', (e) => { if (e.target === bd) closeAssistant(); });
   if (fromBtn && !reduce()) { fromBtn.classList.remove('spark-pop'); void fromBtn.offsetWidth; fromBtn.classList.add('spark-pop'); }
   draw(box);
-  setTimeout(() => box.querySelector('#asst-q')?.focus({ preventScroll: true }), 450);
+  // Телефон: окно по видимой части экрана — когда выезжает клавиатура, поле ввода остаётся над ней, а фон не прокручивается
+  document.documentElement.classList.add('asst-open');
+  const vv = window.visualViewport;
+  if (vv) {
+    const fit = () => {
+      if (!bd.isConnected) { vv.removeEventListener('resize', fit); vv.removeEventListener('scroll', fit); document.documentElement.classList.remove('asst-open'); return; }
+      bd.style.setProperty('--vvh', `${vv.height}px`);
+      bd.style.setProperty('--vvt', `${vv.offsetTop}px`);
+      const body = box.querySelector('#asst-body');
+      if (body) body.scrollTop = body.scrollHeight;
+    };
+    vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
+    fit();
+  }
+  // На телефоне клавиатуру сразу не открываем — она закрыла бы приветствие и подсказки
+  if (!matchMedia('(pointer: coarse)').matches) setTimeout(() => box.querySelector('#asst-q')?.focus({ preventScroll: true }), 450);
 }
 
 function closeAssistant() {
   const box = $sheetRoot.querySelector('.asst');
   if (!box) return;
-  const done = () => { if ($sheetRoot.querySelector('.asst')) $sheetRoot.innerHTML = ''; if (chat.changed) { chat.changed = false; render(); } };
+  const done = () => {
+    if ($sheetRoot.querySelector('.asst')) $sheetRoot.innerHTML = '';
+    document.documentElement.classList.remove('asst-open');
+    if (chat.changed) { chat.changed = false; render(); }
+  };
   if (reduce()) return done();
   box.classList.add('out');
   $sheetRoot.firstElementChild.classList.add('out');

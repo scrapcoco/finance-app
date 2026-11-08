@@ -1100,3 +1100,22 @@ a { color: var(--soft); }
   .head .title { font-size: 16px; }
   .head-btns .icon-btn { width: 40px; height: 40px; }
 }
+
+/* Помощник на телефоне: почти весь экран, высота — по видимой части (над клавиатурой), фон под окном не прокручивается */
+html.asst-open, html.asst-open body { overflow: hidden; overscroll-behavior: none; }
+@media (max-width: 959px) {
+  .asst {
+    left: 8px; right: 8px; bottom: auto;
+    top: calc(var(--vvt, 0px) + max(var(--safe-t), 10px));
+    height: calc(var(--vvh, 100vh) - max(var(--safe-t), 10px) - max(var(--safe-b), 10px));
+    padding: 14px 14px 12px; gap: 10px; border-radius: 22px;
+  }
+  .asst-chips { margin: 0 -14px; padding: 0 14px; }
+  .asst-hello { gap: 10px; }
+  .asst-av.big { width: 52px; height: 52px; }
+  .hello-t { font-size: 18px; }
+  .bub.me { max-width: 88%; }
+  .asst-msg { gap: 6px; }
+  .asst-msg > .asst-av { display: none; } /* на узком экране аватар у каждого ответа отнимал ширину */
+  .bub.ai { border-radius: 18px 18px 18px 6px; }
+}
