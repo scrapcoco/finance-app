@@ -31,7 +31,7 @@ export async function homeScreen(route, alive) {
     txBetween(ymd(pm), prevTo, "status = 'paid'"),
     // Неоплаченные платежи по завтрашний день включительно (и просроченные)
     pb.collection('transactions').getFullList({
-      filter: withBook(`${ownerFilter()} && status = 'planned' && `) + pb.filter('date < {:t}', { t: `${ymd(addDays(new Date(), 2))} 00:00:00` }),
+      filter: withBook(`${ownerFilter()} && status = 'planned' && ` + pb.filter('date < {:t}', { t: `${ymd(addDays(new Date(), 2))} 00:00:00` })),
       sort: 'date,created', expand: 'category'
     }),
     // Дела на сегодня; если сервер ещё без коллекции дел — просто без них
