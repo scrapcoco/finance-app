@@ -966,3 +966,9 @@ a { color: var(--soft); }
 /* На телефоне на главной нет переключателя книг (он есть в «Обзоре», «Платежах», «Долгах»);
    если выбрана не «Личное», это видно по подписи у баланса */
 @media (max-width: 959px) { .view[data-screen="home"] > .book-bar { display: none; } }
+
+/* iPhone увеличивает страницу, если шрифт поля меньше 16px, — и после ввода экран «уезжает» за края.
+   На телефоне все поля ввода — 16px */
+@media (max-width: 959px) {
+  input:not([type="checkbox"]):not([type="radio"]), textarea, select { font-size: 16px !important; }
+}
