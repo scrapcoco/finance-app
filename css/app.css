@@ -968,7 +968,7 @@ a { color: var(--soft); }
 @media (max-width: 959px) { .view[data-screen="home"] > .book-bar { display: none; } }
 
 /* iPhone увеличивает страницу, если шрифт поля меньше 16px, — и после ввода экран «уезжает» за края.
-   На телефоне все поля ввода — 16px */
+   На телефоне мелкие поля ввода — 16px */
 @media (max-width: 959px) {
-  .frow input, .frow select, .search input, .afield input, .quick-add input, .task-note, .sheet input:not(.task-title), .sheet textarea { font-size: 16px; }
+  .frow input, .frow select, .search input, .afield input, .quick-add input, .task-note { font-size: 16px; }
 }
