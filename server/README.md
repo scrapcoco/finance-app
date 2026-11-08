@@ -17,6 +17,8 @@ Netlify эту папку не отдаёт (правило в `netlify.toml`), 
 | `pb_hooks/finance_ingest.pb.js` | `/opt/pocketbase/pb_hooks/` — ключ и приём расходов с iPhone |
 | `1793300000_trading.js` | `/opt/pocketbase/pb_migrations/` — торговый бот: `trading_members`, `trading_status`, `trading_events`, `trading_config` |
 | `1793400000_tasks.js` | `/opt/pocketbase/pb_migrations/` — «Дела»: коллекция `tasks` |
+| `1793500000_assistant_usage.js` | `/opt/pocketbase/pb_migrations/` — помощник: счётчик вопросов за день |
+| `pb_hooks/finance_assistant.pb.js` | `/opt/pocketbase/pb_hooks/` — помощник (ИИ): `POST /api/finance/assistant`; ключ Anthropic — файл `/opt/pocketbase/secrets/anthropic_key` (pocketbase, 600), в репозиторий не кладём |
 | `pb_hooks/finance_trading.pb.js` | `/opt/pocketbase/pb_hooks/` — доступ к боту по коду, приём сводки с Mac (`X-Trading-Key`) |
 | `trading_push.py` | `/opt/finance-reminders/trading_push.py` — push о сделках бота участникам (раз в минуту) |
 | `finance-trading-push.service` / `.timer` | `/etc/systemd/system/` — запуск `trading_push.py` раз в минуту |

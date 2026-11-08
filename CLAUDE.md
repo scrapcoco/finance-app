@@ -30,6 +30,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `core/tasks.js` | дела: `TASK_REPEAT`, `taskDay`, `byTime`, `tasksBetween`, `overdueTasks`, `somedayTasks`, `nextTaskDay`, `newTask`, `completeTask` (у повторяющегося создаёт следующее, возвращает «Отменить»), `timeLeft`, `isMissingCollection` |
 | `screens/home.js` | `homeScreen`: баланс (нажатие → «Обзор», карандаш → `cashSheet`) и «Не пропустить» — платежи по завтра включительно и до двух ближайших дел со временем, остальное ссылкой; если срочного нет — под балансом пусто. Списков записей на главной нет |
 | `screens/tasks.js` | `tasksScreen` («Дела»: неделя, быстрое добавление, «Вчера остались…» → перенести/отложить, дела дня, «Сделано · N», «Когда-нибудь»), `taskSheet` (окно дела), `bindTaskRows` |
+| `screens/assistant.js` | `openAssistant(btn)` — помощник (ИИ): искорка на главной → голубая волна, стеклянное окно с перепиской «пузырями», рамка «дышит», пока думает, ответ печатается; предложенные записи (дела, расходы, доходы, будущие платежи) добавляются только по «Добавить всё»; первое открытие — согласие (localStorage `asstConsent`) |
 | `screens/form.js` | `addScreen`, `editScreen`, `viewForm`, `viewAdjust` (корректировка), `newCategorySheet` |
 | `screens/calendar.js` | `calendarScreen` — сетка месяца, «Отметить оплаченным» |
 | `screens/history.js` | `historyScreen` — оплаченные записи по месяцам, фильтр, «Показать ещё» (по 50) |
@@ -69,6 +70,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 - `debts`: `name`, `total`, `monthly_payment`, `next_due`, `note`, `closed`, `direction` owe|lent (пусто = owe), `book`
 - `projects`: `name`, `kind` online|physical|other, `color`, `archived`, `note`; у `transactions` — `book` и `project`→projects (только у «Бизнеса»)
 - `tasks` (`server/1793400000_tasks.js`): `title`, `day` (пусто = «Когда-нибудь»), `time` «ЧЧ:ММ», `note`, `done`, `done_at`, `repeat` none|daily|weekdays|weekly|monthly, `remind` (под будущие напоминания); пока миграции нет на сервере, «Дела» показывают «обновим сервер», главная — без дел
+- `assistant_usage` (`server/1793500000_assistant_usage.js`): `owner`, `day`, `count`, `tokens_in`, `tokens_out` — вопросы помощнику за день (лимит 30), пишет только хук
 - `push_subscriptions`: `endpoint`, `p256dh`, `auth`, `device`
 - торговый бот: `trading_members` (`user`; создаёт только хук по коду), `trading_status` (одна запись `tradingstatus00`, `data` json), `trading_events` (`type`, `bot`, `text`, `at`); читать могут только участники; `trading_config` закрыт
 - `book_balances` (view): строка на книгу (`owner`, `book`, `balance`); `getBalance()` читает её, в режиме «Всё» складывает
@@ -80,7 +82,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 из оплаченных `transactions` с этим `debt`: «я должен» гасится расходами, «мне должны» — доходами (`debtKind` в `core/data.js`). Рассылка push — `server/remind.py` (systemd-таймер, 9:00); см. `server/README.md`.
 Свои эндпоинты PocketBase — `server/pb_hooks/finance_ingest.pb.js`: `GET/POST/DELETE /api/finance/key` (ключ),
 `POST /api/finance/expense` (заголовок `X-Finance-Key`, тело `{amount, merchant}` → оплаченный расход;
-торговый бот — `server/pb_hooks/finance_trading.pb.js`: `GET /api/finance/trading/access`, `POST /api/finance/trading/code` `{code}`, `POST /api/finance/trading/push` (заголовок `X-Trading-Key`);
+помощник — `server/pb_hooks/finance_assistant.pb.js`: `POST /api/finance/assistant` `{messages, today, now, book}` → `{reply, actions, left}` (Claude Haiku `claude-haiku-5-5`, структурированный ответ; ключ только на сервере в `/opt/pocketbase/secrets/anthropic_key`); торговый бот — `server/pb_hooks/finance_trading.pb.js`: `GET /api/finance/trading/access`, `POST /api/finance/trading/code` `{code}`, `POST /api/finance/trading/push` (заголовок `X-Trading-Key`);
 такой же расход за 2 минуты не дублируется — ответ `duplicate: true`).
 
 ## Правила

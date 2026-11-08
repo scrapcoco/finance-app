@@ -618,7 +618,7 @@ a { color: var(--soft); }
   /* Главная: слева баланс и ближайшие платежи, справа последние записи */
   /* Главная и «Дела» — одна спокойная колонка */
   .view[data-screen="home"], .view[data-screen="tasks"] { max-width: 680px; }
-  .view[data-screen="home"] > .head > a.icon-btn[href="#/settings"] { display: none; } /* «Настройки» есть в полоске */
+  .view[data-screen="home"] .head-btns > a.icon-btn[href="#/settings"] { display: none; } /* «Настройки» есть в полоске */
 
   /* Обзор: плитки и график во всю ширину, кольца рядом */
   .view[data-screen="overview"] { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); column-gap: 24px; align-items: start; }
@@ -998,4 +998,94 @@ a { color: var(--soft); }
   .tab-add { width: 50px; height: 50px; border-radius: 19px; }
   .view { padding-left: 16px; padding-right: 16px; }
   .hero { padding: 18px; }
+}
+
+/* ===== Помощник (ИИ): голубая волна от искорки, стеклянное окно с сиянием, переписка «пузырями» ===== */
+.head-btns { display: flex; gap: 8px; }
+.asst-btn { color: var(--inc); }
+.asst-btn.spark-pop { animation: spark-pop .4s ease-out; }
+@keyframes spark-pop { 40% { transform: scale(1.18) rotate(22deg); color: #fff; box-shadow: 0 0 24px rgba(185,201,250,.6); } }
+
+/* Затемнение проявляется цветом, а не прозрачностью: прозрачность у родителя отключила бы размытие стекла окна */
+.asst-backdrop { position: fixed; inset: 0; z-index: 20; background: rgba(3,5,14,0.32); animation: asst-veil .3s both; }
+.asst-backdrop.out { animation: asst-veil-out .22s both; }
+@keyframes asst-veil { from { background-color: rgba(3,5,14,0); } }
+@keyframes asst-veil-out { to { background-color: rgba(3,5,14,0); } }
+.asst-wave {
+  position: fixed; width: 1800px; height: 1800px; margin: -900px 0 0 -900px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(185,201,250,0) 30%, rgba(185,201,250,.35) 46%, rgba(185,201,250,0) 50%);
+  animation: asst-wave .6s ease-out both;
+}
+@keyframes asst-wave { from { transform: scale(.02); opacity: 1; } to { transform: scale(1); opacity: 0; } }
+.asst {
+  position: fixed; left: 16px; right: 16px; top: calc(var(--safe-t) + 72px); bottom: calc(var(--safe-b) + 16px);
+  max-width: 520px; margin: 0 auto; border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 14px;
+  background-color: rgba(10,20,32,0.62);
+  background-image: radial-gradient(120% 55% at 50% 0%, rgba(185,201,250,0.20), rgba(185,201,250,0) 70%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid rgba(185,201,250,0.45);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 0 30px rgba(185,201,250,0.12);
+  animation: asst-in .42s .12s cubic-bezier(.2,.8,.2,1) both;
+}
+.asst.out { animation: asst-out .22s ease-in both; }
+.asst.think { animation: asst-breathe 1.4s ease-in-out infinite; }
+@keyframes asst-in { from { opacity: 0; transform: translateY(14px) scale(.97); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes asst-out { to { opacity: 0; transform: translateY(10px) scale(.98); } }
+@keyframes asst-breathe {
+  0%, 100% { border-color: rgba(185,201,250,.35); box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 0 0 rgba(185,201,250,0); }
+  50% { border-color: rgba(185,201,250,.95); box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 0 28px rgba(185,201,250,.28); }
+}
+.asst-head { display: flex; align-items: center; gap: 12px; }
+.asst-head .main { flex: 1; min-width: 0; }
+.asst-head h2 { margin: 0; font-size: 16px; font-weight: 800; }
+.asst-head .meta { font-size: 12px; color: var(--muted); }
+.asst-head .icon-btn { margin-right: -8px; }
+.asst-ic, .asst-av { border: 1px solid rgba(185,201,250,0.45); color: var(--inc); display: flex; align-items: center; justify-content: center; flex: none; }
+.asst-ic { width: 38px; height: 38px; border-radius: 12px; }
+.asst-ic svg { width: 18px; height: 18px; }
+.asst-av { width: 28px; height: 28px; border-radius: 50%; }
+.asst-av svg { width: 14px; height: 14px; }
+.asst-av.big { width: 64px; height: 64px; background: rgba(185,201,250,0.08); box-shadow: 0 0 40px rgba(185,201,250,0.35); }
+.asst-av.big svg { width: 30px; height: 30px; }
+.asst-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; overscroll-behavior: contain; }
+.asst-hello { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 0 8px; }
+.hello-t { font-size: 20px; font-weight: 800; line-height: 1.3; }
+.hello-s { font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 320px; }
+.bub { padding: 10px 14px; font-size: 14px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bub.me { align-self: flex-end; max-width: 82%; border-radius: 18px 18px 6px 18px; background: rgba(255,255,255,0.12); border: 1px solid var(--glass-line); }
+.asst-msg { display: flex; gap: 8px; align-items: flex-end; }
+.bub.ai { flex: 1; min-width: 0; border-radius: 18px 18px 18px 6px; background: rgba(185,201,250,0.08); border: 1px solid rgba(185,201,250,0.25); display: flex; flex-direction: column; gap: 6px; }
+.bub.ai.dots { flex: none; flex-direction: row; gap: 4px; padding: 13px 14px; }
+.bub.dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--inc); animation: asst-blink 1s infinite; }
+.bub.dots i:nth-child(2) { animation-delay: .15s; } .bub.dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes asst-blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+.asst-err { color: var(--danger); }
+.asst-acts { display: flex; flex-direction: column; }
+.asst-row { display: flex; align-items: center; gap: 10px; min-height: 54px; border-bottom: 1px solid var(--line); white-space: normal; }
+.asst-row:last-child { border-bottom: none; }
+.asst-row .datebox { width: 38px; height: 38px; }
+.asst-row .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.asst-row .name { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asst-row .meta { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asst-row .amt { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.asst-x { width: 30px; height: 30px; margin-right: -6px; border: none; background: transparent; color: var(--muted); border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0; flex: none; }
+.asst-x svg { width: 15px; height: 15px; }
+.asst-btns { display: flex; margin-top: 4px; white-space: normal; }
+.asst-btns .btn.small { flex: 1; height: 42px; }
+.asst-done { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-weight: 700; color: var(--inc); white-space: normal; }
+.asst-done svg { width: 18px; height: 18px; }
+.asst-foot { display: flex; flex-direction: column; gap: 10px; }
+.asst-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -18px; padding: 0 18px; }
+.asst-chips::-webkit-scrollbar { display: none; }
+.asst-chips .chip { white-space: nowrap; flex: none; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; border-color: var(--glass-line); }
+.asst-input { display: flex; align-items: center; gap: 8px; border: 1px solid var(--glass-line); border-radius: 16px; padding: 4px 4px 4px 14px; margin: 0; }
+.asst-input input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--ink); font: inherit; font-size: 16px; height: 40px; }
+.asst-input input::placeholder { color: var(--dim); }
+.asst-input .qa-btn:disabled { opacity: .5; }
+.asst .rise { animation: asst-rise .28s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes asst-rise { from { opacity: 0; transform: translateY(8px); } }
+@media (min-width: 960px) { .asst { top: 10vh; bottom: 10vh; } }
+@media (prefers-reduced-motion: reduce) {
+  .asst, .asst-backdrop, .asst .rise, .asst-btn.spark-pop { animation: none; }
+  .asst.think { animation: none; border-color: rgba(185,201,250,.9); }
 }

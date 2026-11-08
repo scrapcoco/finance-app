@@ -8,6 +8,7 @@ import { $view, toast, errText, monthSwitch, bindMonthSwitch, openSheet, closeSh
 import { txBetween, getBalance, withBook, curBook, markPaid, BOOKS } from '../core/data.js';
 import { byTime, tasksBetween, completeTask, timeLeft, isMissingCollection } from '../core/tasks.js';
 import { taskSheet } from './tasks.js';
+import { openAssistant } from './assistant.js';
 import { render } from '../router.js';
 
 const plural = (n, one, few, many) => {
@@ -97,7 +98,7 @@ export async function homeScreen(route, alive) {
     ? `<a class="someday-link" href="#/tasks">${shownTasks.length ? 'Ещё' : 'На сегодня'} ${restTasks} ${plural(restTasks, 'дело', 'дела', 'дел')}${ICON.right}</a>` : '';
 
   $view.innerHTML = `
-    <div class="head">${monthSwitch()}<a class="icon-btn" href="#/settings" aria-label="Настройки">${ICON.gear}</a></div>
+    <div class="head">${monthSwitch()}<div class="head-btns"><button type="button" class="icon-btn asst-btn" id="asst" aria-label="Помощник">${ICON.spark}</button><a class="icon-btn" href="#/settings" aria-label="Настройки">${ICON.gear}</a></div></div>
     <section class="hero">
       <div class="hero-top">
         <a class="bal-btn" href="#/overview" aria-label="Баланс на сегодня ${moneySigned(balance)}. Открыть обзор">
@@ -113,6 +114,7 @@ export async function homeScreen(route, alive) {
     </section>
     ${nudges || moreLink ? `<section class="sec nudges" aria-label="Не пропустить">${nudges}${moreLink}</section>` : ''}`;
   bindMonthSwitch();
+  $view.querySelector('#asst').onclick = (e) => openAssistant(e.currentTarget);
   $view.querySelector('#cash').onclick = () => cashSheet(balance);
   $view.querySelectorAll('[data-pay]').forEach((b) => b.onclick = async () => {
     b.disabled = true;
