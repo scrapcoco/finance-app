@@ -34,6 +34,9 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
+/* iPhone, приложение с экрана «Домой» (status bar black-translucent): высота страницы меньше экрана на высоту
+   строки состояния, и на коротких экранах (главная, «Дела») внизу оставалась тёмная полоса. Страница — на эту высоту длиннее */
+html { min-height: calc(100% + env(safe-area-inset-top, 0px)); }
 body {
   background: var(--ground);
   color: var(--ink);
