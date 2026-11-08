@@ -16,6 +16,7 @@ Netlify эту папку не отдаёт (правило в `netlify.toml`), 
 | `1793100000_balances_view.js` | `/opt/pocketbase/pb_migrations/` — view-коллекция `balances`: баланс считает база |
 | `pb_hooks/finance_ingest.pb.js` | `/opt/pocketbase/pb_hooks/` — ключ и приём расходов с iPhone |
 | `1793300000_trading.js` | `/opt/pocketbase/pb_migrations/` — торговый бот: `trading_members`, `trading_status`, `trading_events`, `trading_config` |
+| `1793400000_tasks.js` | `/opt/pocketbase/pb_migrations/` — «Дела»: коллекция `tasks` |
 | `pb_hooks/finance_trading.pb.js` | `/opt/pocketbase/pb_hooks/` — доступ к боту по коду, приём сводки с Mac (`X-Trading-Key`) |
 | `trading_push.py` | `/opt/finance-reminders/trading_push.py` — push о сделках бота участникам (раз в минуту) |
 | `finance-trading-push.service` / `.timer` | `/etc/systemd/system/` — запуск `trading_push.py` раз в минуту |
