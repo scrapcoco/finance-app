@@ -47,7 +47,8 @@ body {
 /* Фон — зелёные стеклянные кольца на лавандово-персиковом небе (img/bg-glass-*.jpg, Pexels) под вуалью.
    ПК — горизонтальный кадр с арками колец; телефон — вся вертикальная картинка */
 body::before {
-  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  /* Ниже нижнего края с запасом: в приложении с экрана «Домой» iPhone иначе оставляет внизу тёмную полосу */
+  content: ""; position: fixed; top: 0; left: 0; right: 0; bottom: calc(-1 * var(--safe-b) - 120px); z-index: -1; pointer-events: none;
   background:
     linear-gradient(180deg, rgba(5,12,22,0.66) 0%, rgba(5,12,22,0.72) 50%, rgba(5,12,22,0.82) 100%),
     url("../img/bg-glass-1920.jpg") center / cover no-repeat,
@@ -101,7 +102,7 @@ a { color: var(--soft); }
 .bal-btn:active .big { opacity: .75; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .pair .k { font-size: 12px; color: var(--muted); }
-.pair .v { font-size: 18px; font-weight: 700; }
+.pair .v { font-size: clamp(15px, 4.8vw, 18px); font-weight: 700; white-space: nowrap; }
 /* Плашка «+12% к окт»: рост доходов — хорошо, рост расходов — плохо */
 .delta { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; color: var(--muted); }
 .delta.good { color: var(--inc); }
@@ -881,12 +882,15 @@ a { color: var(--soft); }
 /* ===== Главная: «Не пропустить» и «Дела» ===== */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .card { border-radius: var(--radius-m); padding: 14px 16px; }
-.hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.hero-top .bal-btn { flex: 1; min-width: 0; color: inherit; text-decoration: none; }
-.hero-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; margin: -4px -10px 0 0; }
-.ov-link { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 700; color: var(--soft); text-decoration: none; padding: 4px 10px 4px 0; }
+.hero-top { position: relative; }
+.hero-top .bal-btn { display: flex; flex-direction: column; gap: 2px; color: inherit; text-decoration: none; padding-right: 40px; }
+.hero-top .label { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-right: -40px; }
+.hero-top .label > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Сумма всегда в одну строку: на узком экране шрифт чуть меньше */
+.hero-top .big { white-space: nowrap; font-size: clamp(28px, 10vw, 36px); }
+.ov-link { display: inline-flex; align-items: center; gap: 2px; flex: none; font-size: 13px; font-weight: 700; color: var(--soft); }
 .ov-link svg { width: 15px; height: 15px; }
-.cash-btn { width: 40px; height: 40px; }
+.cash-btn { position: absolute; right: -10px; bottom: -4px; width: 40px; height: 40px; }
 .cash-btn svg { width: 17px; height: 17px; }
 
 .nudges { gap: 10px; }
@@ -895,13 +899,24 @@ a { color: var(--soft); }
 .nudge-link:focus-visible { outline: 2px solid var(--inc); outline-offset: 4px; }
 .nudge .main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .nudge .name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.nudge-k { font-size: 12px; font-weight: 700; }
+.nudge-k { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nudge-ic { width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--glass-line); display: flex; align-items: center; justify-content: center; flex: none; }
 .nudge-ic svg { width: 18px; height: 18px; }
 .nudge-ic.inc, .nudge-k.inc { color: var(--inc); }
 .nudge-ic.exp, .nudge-k.exp { color: var(--exp); }
 .nudge-ic.late, .nudge-k.late { color: var(--danger); }
 .nudge .btn.small { flex: none; padding: 0 12px; height: 38px; }
+/* Сумма платежа не обрезается — сокращается только название */
+.pay-name { display: flex; gap: 6px; min-width: 0; }
+.pay-name .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pay-name .sum { flex: none; }
+.pay-name .t::after { content: " ·"; }
+@media (max-width: 360px) {
+  .nudge { gap: 10px; padding: 10px 10px 10px 12px; }
+  .nudge-link { gap: 10px; }
+  .nudge-ic { width: 34px; height: 34px; }
+  .nudge .btn.small { padding: 0 10px; }
+}
 .someday-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 6px 2px; background: none; border: none; color: var(--soft); font: inherit; font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer; }
 .someday-link svg { width: 16px; height: 16px; }
 
@@ -934,7 +949,8 @@ a { color: var(--soft); }
 .ask-top .meta { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ask-btns { display: flex; gap: 8px; }
 .ask-btns .btn.small { height: 38px; white-space: nowrap; padding: 0 14px; }
-.ask-btns .btn.small:first-child { flex: 1; }
+.ask-btns .btn.small:first-child { flex: 1; min-width: 0; }
+@media (max-width: 360px) { .ask-btns .btn.small { padding: 0 10px; } }
 .sec-note { font-size: 13px; font-weight: 600; color: var(--muted); }
 
 .task-row { gap: 12px; padding: 0; }
@@ -971,4 +987,12 @@ a { color: var(--soft); }
    На телефоне мелкие поля ввода — 16px */
 @media (max-width: 959px) {
   .frow input, .frow select, .search input, .afield input, .quick-add input, .task-note { font-size: 16px; }
+}
+
+/* Узкие телефоны (и «Увеличенный» вид экрана в iOS): меню из пяти пунктов помещается без наложения подписей */
+@media (max-width: 360px) {
+  .tab { width: 56px; font-size: 10px; }
+  .tab-add { width: 50px; height: 50px; border-radius: 19px; }
+  .view { padding-left: 16px; padding-right: 16px; }
+  .hero { padding: 18px; }
 }

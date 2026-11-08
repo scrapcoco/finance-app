@@ -80,7 +80,7 @@ export async function homeScreen(route, alive) {
       <a class="nudge-link" href="#/edit/${t.id}">
         <span class="nudge-ic ${late ? 'late' : t.kind === 'income' ? 'inc' : 'exp'}">${ICON.cal}</span>
         <span class="main"><span class="nudge-k ${late ? 'late' : t.kind === 'income' ? 'inc' : 'exp'}">${payLabel(t)}</span>
-        <span class="name">${esc(name)} · ${signed(t.amount, t.kind).replace(/^[+−]/, '')}</span></span></a>
+        <span class="name pay-name"><span class="t">${esc(name)}</span><span class="sum">${signed(t.amount, t.kind).replace(/^[+−]/, '')}</span></span></span></a>
       <button type="button" class="btn small secondary" data-pay="${t.id}">${t.kind === 'income' ? 'Получено' : 'Оплачено'}</button></div>`;
   };
   const taskCard = (t) => {
@@ -101,11 +101,9 @@ export async function homeScreen(route, alive) {
     <section class="hero">
       <div class="hero-top">
         <a class="bal-btn" href="#/overview" aria-label="Баланс на сегодня ${moneySigned(balance)}. Открыть обзор">
-          <span class="label">Баланс на сегодня${state.book === 'personal' ? '' : ` · ${BOOKS[state.book]}`}</span><span class="big">${moneySigned(balance)}</span></a>
-        <div class="hero-side">
-          <a class="ov-link" href="#/overview" tabindex="-1" aria-hidden="true">Обзор${ICON.right}</a>
-          <button type="button" class="icon-btn ghost cash-btn" id="cash" aria-label="Изменить остаток на руках">${ICON.edit}</button>
-        </div>
+          <span class="label"><span>Баланс на сегодня${state.book === 'personal' ? '' : ` · ${BOOKS[state.book]}`}</span><span class="ov-link" aria-hidden="true">Обзор${ICON.right}</span></span>
+          <span class="big">${moneySigned(balance)}</span></a>
+        <button type="button" class="icon-btn ghost cash-btn" id="cash" aria-label="Изменить остаток на руках">${ICON.edit}</button>
       </div>
       <div class="pair">
         <div><div class="k">Доходы</div><div class="v inc">+${money(inc)}</div>${delta(inc, prevInc, true)}</div>
