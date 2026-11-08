@@ -1,11 +1,19 @@
-// Главная: баланс, платежи и записи месяца
-import { esc, money, net, moneySigned, parseAmount, MONTHS, MONTHS_GEN, MONTHS_SHORT, ymd, pbDate, today, firstOfMonth, addMonths, addDays, daysIn } from '../core/util.js';
+// Главная: баланс (нажатие — «Обзор») и только то, что нельзя пропустить: платежи на сегодня-завтра и ближайшие дела.
+// Если ничего срочного нет — под балансом пусто.
+import { esc, money, net, moneySigned, parseAmount, MONTHS, MONTHS_GEN, MONTHS_SHORT, ymd, pbDate, today, firstOfMonth, addMonths, addDays, daysIn, txDay, daysUntil, signed } from '../core/util.js';
 import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid, ownerFilter } from '../core/pb.js';
-import { $view, toast, errText, monthSwitch, bindMonthSwitch, txRow, bindPay, openSheet, closeSheet } from '../ui.js';
-import { txBetween, getBalance, withBook, curBook } from '../core/data.js';
+import { $view, toast, errText, monthSwitch, bindMonthSwitch, openSheet, closeSheet } from '../ui.js';
+import { txBetween, getBalance, withBook, curBook, markPaid } from '../core/data.js';
+import { byTime, tasksBetween, completeTask, timeLeft, isMissingCollection } from '../core/tasks.js';
+import { taskSheet } from './tasks.js';
 import { render } from '../router.js';
+
+const plural = (n, one, few, many) => {
+  const a = n % 10, b = n % 100;
+  return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
+};
 
 export async function homeScreen(route, alive) {
   const m = state.month;
@@ -15,13 +23,18 @@ export async function homeScreen(route, alive) {
   const pm = addMonths(m, -1);
   const prevDays = Math.min(new Date().getDate(), daysIn(pm.getFullYear(), pm.getMonth()));
   const prevTo = isCur ? ymd(addDays(pm, prevDays)) : from;
-  const recentN = matchMedia('(min-width: 960px)').matches ? 8 : 5; // на ПК справа целая колонка
-  const [balance, monthTx, prevTx, upcoming, recent] = await Promise.all([
+  const tomorrow = ymd(addDays(new Date(), 1));
+  const [balance, monthTx, prevTx, soonPay, todayTasks] = await Promise.all([
     getBalance(),
     txBetween(from, to),
     txBetween(ymd(pm), prevTo, "status = 'paid'"),
-    isCur ? pb.collection('transactions').getList(1, 5, { filter: withBook(`${ownerFilter()} && status = 'planned'`), sort: 'date,created', expand: 'category' }) : null,
-    isCur ? pb.collection('transactions').getList(1, recentN, { filter: withBook(`${ownerFilter()} && status = 'paid'`), sort: '-date,-created', expand: 'category' }) : null
+    // Неоплаченные платежи по завтрашний день включительно (и просроченные)
+    pb.collection('transactions').getFullList({
+      filter: withBook(`${ownerFilter()} && status = 'planned' && `) + pb.filter('date < {:t}', { t: `${ymd(addDays(new Date(), 2))} 00:00:00` }),
+      sort: 'date,created', expand: 'category'
+    }),
+    // Дела на сегодня; если сервер ещё без коллекции дел — просто без них
+    tasksBetween(today(), today()).catch((e) => { if (isMissingCollection(e)) return []; throw e; })
   ]);
   if (!alive()) return;
   let inc = 0, exp = 0, plannedNet = 0;
@@ -39,43 +52,85 @@ export async function homeScreen(route, alive) {
     const cls = p === 0 ? '' : (p > 0) === upIsGood ? 'good' : 'bad';
     return `<span class="delta ${cls}" title="По сравнению с: ${esc(prevLabel)} (${money(prev)})">${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(p)}% к ${MONTHS_SHORT[pm.getMonth()]}</span>`;
   };
-  // Для другого месяца списки показывают записи именно этого месяца
   const monthName = MONTHS[m.getMonth()].toLowerCase();
-  const upcomingItems = isCur ? upcoming.items : monthTx.filter((t) => t.status === 'planned').slice(0, 5);
-  const recentItems = isCur ? recent.items : monthTx.filter((t) => t.status === 'paid').reverse().slice(0, recentN);
   const lastDay = `${daysIn(m.getFullYear(), m.getMonth())} ${MONTHS_GEN[m.getMonth()]}`;
   const note = isCur
-    ? (plannedNet ? `С учётом запланированных: ${moneySigned(balance + plannedNet)} к ${lastDay}` : 'Запланированных платежей до конца месяца нет')
+    ? (plannedNet ? `С учётом запланированных: ${moneySigned(balance + plannedNet)} к ${lastDay}` : '')
     : `Итог за ${monthName}: ${moneySigned(inc - exp)}${plannedNet ? `, запланировано: ${moneySigned(plannedNet)}` : ''}`;
+
+  // ===== Не пропустить =====
+  const pays = soonPay.slice(0, 3);
+  const open = todayTasks.filter((t) => !t.done).sort(byTime);
+  // На главной — дела со временем (до двух ближайших); остальные — одной ссылкой
+  const nowHm = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`;
+  const timed = open.filter((t) => t.time);
+  const upcoming = timed.filter((t) => t.time >= nowHm);
+  const missed = timed.filter((t) => t.time < nowHm);
+  const shownTasks = [...missed.slice(-1), ...upcoming].slice(0, 2);
+  const restTasks = open.length - shownTasks.length;
+  const payLabel = (t) => {
+    const n = daysUntil(txDay(t));
+    const what = t.kind === 'income' ? 'Поступление' : 'Оплата';
+    return n < 0 ? `${what} просрочена` : n === 0 ? `${what} сегодня` : `${what} завтра`;
+  };
+  const payCard = (t) => {
+    const name = t.note || t.expand?.category?.name || (t.kind === 'income' ? 'Доход' : 'Расход');
+    const late = daysUntil(txDay(t)) < 0;
+    return `<div class="card nudge">
+      <a class="nudge-link" href="#/edit/${t.id}">
+        <span class="nudge-ic ${late ? 'late' : t.kind === 'income' ? 'inc' : 'exp'}">${ICON.cal}</span>
+        <span class="main"><span class="nudge-k ${late ? 'late' : t.kind === 'income' ? 'inc' : 'exp'}">${payLabel(t)}</span>
+        <span class="name">${esc(name)} · ${signed(t.amount, t.kind).replace(/^[+−]/, '')}</span></span></a>
+      <button type="button" class="btn small secondary" data-pay="${t.id}">${t.kind === 'income' ? 'Получено' : 'Оплачено'}</button></div>`;
+  };
+  const taskCard = (t) => {
+    const left = timeLeft(t.time);
+    return `<div class="card nudge">
+      <button type="button" class="nudge-link" data-open="${t.id}">
+        <span class="nudge-ic inc">${ICON.clock}</span>
+        <span class="main"><span class="nudge-k ${left === 'Время прошло' ? 'late' : 'inc'}">${left} · ${esc(t.time)}</span>
+        <span class="name">${esc(t.title)}</span></span></button>
+      <button type="button" class="btn small secondary" data-done="${t.id}">Сделано</button></div>`;
+  };
+  const nudges = isCur ? [...pays.map(payCard), ...shownTasks.map(taskCard)].join('') : '';
+  const moreLink = isCur && restTasks > 0
+    ? `<a class="someday-link" href="#/tasks">${shownTasks.length ? 'Ещё' : 'На сегодня'} ${restTasks} ${plural(restTasks, 'дело', 'дела', 'дел')}${ICON.right}</a>` : '';
 
   $view.innerHTML = `
     <div class="head">${monthSwitch()}<a class="icon-btn" href="#/settings" aria-label="Настройки">${ICON.gear}</a></div>
     <section class="hero">
-      <button type="button" class="bal-btn" id="cash" aria-label="Баланс на сегодня ${moneySigned(balance)}. Изменить остаток">
-        <div class="label">Баланс на сегодня ${ICON.edit}</div><div class="big">${moneySigned(balance)}</div></button>
+      <div class="hero-top">
+        <a class="bal-btn" href="#/overview" aria-label="Баланс на сегодня ${moneySigned(balance)}. Открыть обзор">
+          <span class="label">Баланс на сегодня</span><span class="big">${moneySigned(balance)}</span></a>
+        <div class="hero-side">
+          <a class="ov-link" href="#/overview" tabindex="-1" aria-hidden="true">Обзор${ICON.right}</a>
+          <button type="button" class="icon-btn ghost cash-btn" id="cash" aria-label="Изменить остаток на руках">${ICON.edit}</button>
+        </div>
+      </div>
       <div class="pair">
         <div><div class="k">Доходы</div><div class="v inc">+${money(inc)}</div>${delta(inc, prevInc, true)}</div>
         <div><div class="k">Расходы</div><div class="v exp">−${money(exp)}</div>${delta(exp, prevExp, false)}</div>
       </div>
-      <div class="note">${esc(note)}</div>
+      ${note ? `<div class="note">${esc(note)}</div>` : ''}
     </section>
-    <section class="sec sec-up">
-      <div class="sec-head"><h2>${isCur ? 'Ближайшие платежи' : `Платежи за ${monthName}`}</h2><a href="#/calendar">Календарь</a></div>
-      ${upcomingItems.length
-        ? `<div class="list">${upcomingItems.map((t) => txRow(t, { planned: true, pay: true })).join('')}</div>`
-        : `<div class="list"><div class="empty">${isCur ? 'Будущих платежей нет. Добавь запись и включи «Будущий платёж».' : 'Неоплаченных платежей в этом месяце нет.'}</div></div>`}
-    </section>
-    <section class="sec sec-recent">
-      <div class="sec-head"><h2>${isCur ? 'Последние записи' : `Записи за ${monthName}`}</h2><a href="#/history">Все</a></div>
-      ${recentItems.length
-        ? `<div class="list">${recentItems.map((t) => txRow(t)).join('')}</div>`
-        : isCur
-          ? `<div class="list"><div class="empty">Записей пока нет.<br><a class="btn small" href="#/add" style="display:inline-flex;align-items:center;margin-top:10px;text-decoration:none">Добавить первую запись</a></div></div>`
-          : `<div class="list"><div class="empty">Оплаченных записей в этом месяце нет.</div></div>`}
-    </section>`;
+    ${nudges || moreLink ? `<section class="sec nudges" aria-label="Не пропустить">${nudges}${moreLink}</section>` : ''}`;
   bindMonthSwitch();
-  bindPay(upcomingItems);
   $view.querySelector('#cash').onclick = () => cashSheet(balance);
+  $view.querySelectorAll('[data-pay]').forEach((b) => b.onclick = async () => {
+    b.disabled = true;
+    try { await markPaid(pays.find((t) => t.id === b.dataset.pay)); render(); }
+    catch (e) { toast(errText(e)); b.disabled = false; }
+  });
+  $view.querySelectorAll('[data-done]').forEach((b) => b.onclick = async () => {
+    const t = shownTasks.find((x) => x.id === b.dataset.done); if (!t) return;
+    b.disabled = true;
+    try {
+      const undo = await completeTask(t);
+      toast('Сделано', { label: 'Отменить', run: async () => { await undo(); render(); } });
+      render();
+    } catch (e) { toast(errText(e)); b.disabled = false; }
+  });
+  $view.querySelectorAll('[data-open]').forEach((b) => b.onclick = () => { const t = shownTasks.find((x) => x.id === b.dataset.open); if (t) taskSheet(t); });
 }
 
 export function cashSheet(balance) {

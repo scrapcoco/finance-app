@@ -13,6 +13,10 @@ export const state = {
   histQuery: '',
   ovKind: 'expense',
   debtDir: 'owe',
+  // «Дела»: выбранный день, режим «Когда-нибудь», раскрыт ли список сделанных
+  taskDay: today(),
+  taskSomeday: false,
+  taskShowDone: false,
   // «Записи» (ПК): поиск, фильтры и сортировка таблицы
   rec: { q: '', kind: 'all', cat: '', proj: '', status: '', sort: 'date', dir: -1 },
   cache: { cats: null, fields: null, debts: null, projects: null }

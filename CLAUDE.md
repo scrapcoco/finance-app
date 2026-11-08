@@ -27,7 +27,9 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `core/state.js` | `state`: выбранный месяц/день/период/фильтры + `state.cache` справочников |
 | `core/data.js` | книги (`BOOKS`, `curBook`, `bookOf`, `bookFilter`, `withBook`), `getCats/getFields/getDebts/getProjects` (кэш), `txBetween`, `ensureDefaults(book)`, `markPaid`, `bumpDebtDue`, `getBalance` |
 | `screens/login.js` | вход, регистрация по инвайт-коду, `termsSheet`, `COPYRIGHT` |
-| `screens/home.js` | `homeScreen` (баланс, платежи и записи месяца), `cashSheet` |
+| `core/tasks.js` | дела: `TASK_REPEAT`, `taskDay`, `byTime`, `tasksBetween`, `overdueTasks`, `somedayTasks`, `nextTaskDay`, `newTask`, `completeTask` (у повторяющегося создаёт следующее, возвращает «Отменить»), `timeLeft`, `isMissingCollection` |
+| `screens/home.js` | `homeScreen`: баланс (нажатие → «Обзор», карандаш → `cashSheet`) и «Не пропустить» — платежи по завтра включительно и до двух ближайших дел со временем, остальное ссылкой; если срочного нет — под балансом пусто. Списков записей на главной нет |
+| `screens/tasks.js` | `tasksScreen` («Дела»: неделя, быстрое добавление, «Вчера остались…» → перенести/отложить, дела дня, «Сделано · N», «Когда-нибудь»), `taskSheet` (окно дела), `bindTaskRows` |
 | `screens/form.js` | `addScreen`, `editScreen`, `viewForm`, `viewAdjust` (корректировка), `newCategorySheet` |
 | `screens/calendar.js` | `calendarScreen` — сетка месяца, «Отметить оплаченным» |
 | `screens/history.js` | `historyScreen` — оплаченные записи по месяцам, фильтр, «Показать ещё» (по 50) |
@@ -46,11 +48,11 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 видны только там), экраны раскладываются в колонки по `#view[data-screen="<маршрут>"]` (ставит `render`).
 На телефоне меню прячется атрибутом `data-mobile-hidden`, а не `hidden` (`hidden` — только экран входа).
 Подсветка выбранного (`placeGlow` в `ui.js`) тянется по обеим осям; капсулу вырезает clip-path из переменных --gt/--gr/--gb/--gl,
-каждый край — свой твин (передний быстрее), как в ролике; углы и обводка не искажаются. Меню (`#tabbar`) собирается один раз, `render` вызывает `freezeGlows()`. Клавиши: N — новая запись, ←/→ — месяц, Esc — закрыть окно.
+каждый край — свой твин (передний быстрее), как в ролике; углы и обводка не искажаются. Нижнее меню на телефоне: Главная · Дела · + · Платежи · Долги («Обзор» — только в полоске на ПК). Меню (`#tabbar`) собирается один раз, `render` вызывает `freezeGlows()`. Клавиши: N — новая запись, ←/→ — месяц, Esc — закрыть окно.
 Отклик на нажатие (`ui.js`, pointerdown): «тик» через Web Audio (выключатель «Звук нажатий» в настройках, localStorage `clickSound`)
 и пружинка через свойство `scale`. Новый экран: блоки выезжают по очереди (`.view-enter > *` в app.css).
 
-Маршруты — hash: `#/`, `#/add?kind=&date=&debt=&project=&back=`, `#/edit/<id>`, `#/calendar`, `#/history` (на ПК → `#/records`), `#/overview` (`#/reports` — то же), `#/debts`, `#/projects`, `#/project/<id>`, `#/settings`.
+Маршруты — hash: `#/`, `#/add?kind=&date=&debt=&project=&back=`, `#/edit/<id>`, `#/calendar`, `#/history` (на ПК → `#/records`), `#/overview` (`#/reports` — то же; на телефоне в меню нет — открывается нажатием на баланс), `#/tasks`, `#/debts`, `#/projects`, `#/project/<id>`, `#/settings`.
 
 Книги: переключатель «Личное · Бизнес · Всё» (`mountBookBar` в `router.js`, `state.book`, localStorage `book`). У записей, категорий и долгов поле `book` personal|business, пусто = «Личное». Запросы списков — через `withBook()`.
 
@@ -66,6 +68,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 - `custom_fields`: `label`, `field_type` text|number|select|date|bool|url, `options`, `sort`, `hidden`
 - `debts`: `name`, `total`, `monthly_payment`, `next_due`, `note`, `closed`, `direction` owe|lent (пусто = owe), `book`
 - `projects`: `name`, `kind` online|physical|other, `color`, `archived`, `note`; у `transactions` — `book` и `project`→projects (только у «Бизнеса»)
+- `tasks` (`server/1793400000_tasks.js`): `title`, `day` (пусто = «Когда-нибудь»), `time` «ЧЧ:ММ», `note`, `done`, `done_at`, `repeat` none|daily|weekdays|weekly|monthly, `remind` (под будущие напоминания); пока миграции нет на сервере, «Дела» показывают «обновим сервер», главная — без дел
 - `push_subscriptions`: `endpoint`, `p256dh`, `auth`, `device`
 - торговый бот: `trading_members` (`user`; создаёт только хук по коду), `trading_status` (одна запись `tradingstatus00`, `data` json), `trading_events` (`type`, `bot`, `text`, `at`); читать могут только участники; `trading_config` закрыт
 - `book_balances` (view): строка на книгу (`owner`, `book`, `balance`); `getBalance()` читает её, в режиме «Всё» складывает

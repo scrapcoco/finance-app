@@ -16,13 +16,15 @@ import { overviewScreen } from './screens/overview.js';
 import { projectsScreen, projectScreen } from './screens/projects.js';
 import { recordsScreen } from './screens/records.js';
 import { tradingScreen } from './screens/trading.js';
+import { tasksScreen } from './screens/tasks.js';
 
 // desk: true — пункт только в боковой панели на ПК (на телефоне туда ведут ссылки с экранов)
 export const TABS = [
   { r: '', label: 'Главная', icon: ICON.home },
-  { r: 'overview', label: 'Обзор', icon: ICON.pie },
-  { r: 'calendar', label: 'Платежи', icon: ICON.cal },
+  { r: 'tasks', label: 'Дела', icon: ICON.tasks },
   { r: 'add', label: 'Новая запись', icon: ICON.plus, add: true },
+  { r: 'overview', label: 'Обзор', icon: ICON.pie, desk: true }, // на телефоне — нажатие на баланс на главной
+  { r: 'calendar', label: 'Платежи', icon: ICON.cal },
   { r: 'debts', label: 'Долги', icon: ICON.debt },
   { r: 'projects', label: 'Проекты', icon: ICON.case, desk: true },
   { r: 'records', label: 'Записи', icon: ICON.list, desk: true },
@@ -75,7 +77,8 @@ window.addEventListener('resize', () => {
 let shownScreen = null;
 
 // Карточка проекта подсвечивает пункт «Проекты»
-const tabOf = (name) => (name === 'project' || name === 'trading' ? 'projects' : name === 'history' ? 'records' : name);
+// «Обзор» на телефоне открывается с главной (нажатие на баланс) — подсвечиваем «Главную»
+const tabOf = (name) => (name === 'project' || name === 'trading' ? 'projects' : name === 'history' ? 'records' : name === 'overview' && !isDesk() ? '' : name);
 const isDesk = () => matchMedia('(min-width: 960px)').matches;
 
 export function parseRoute() {
@@ -88,7 +91,7 @@ export function parseRoute() {
 const ROUTES = {
   '': homeScreen, add: addScreen, edit: editScreen, calendar: calendarScreen,
   overview: overviewScreen, history: historyScreen, debts: debtsScreen, settings: settingsScreen,
-  projects: projectsScreen, project: projectScreen, records: recordsScreen, trading: tradingScreen
+  projects: projectsScreen, project: projectScreen, records: recordsScreen, trading: tradingScreen, tasks: tasksScreen
 };
 
 // На главную: смена hash сама вызовет render (hashchange); если уже на главной — рисуем вручную. Без двойной отрисовки.
