@@ -962,3 +962,7 @@ a { color: var(--soft); }
 .task-del svg { width: 20px; height: 20px; }
 .frow input:disabled, .frow select:disabled { opacity: .45; }
 @media (prefers-reduced-motion: reduce) { .tcheck { transition: none; } }
+
+/* На телефоне на главной нет переключателя книг (он есть в «Обзоре», «Платежах», «Долгах»);
+   если выбрана не «Личное», это видно по подписи у баланса */
+@media (max-width: 959px) { .view[data-screen="home"] > .book-bar { display: none; } }

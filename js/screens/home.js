@@ -5,7 +5,7 @@ import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid, ownerFilter } from '../core/pb.js';
 import { $view, toast, errText, monthSwitch, bindMonthSwitch, openSheet, closeSheet } from '../ui.js';
-import { txBetween, getBalance, withBook, curBook, markPaid } from '../core/data.js';
+import { txBetween, getBalance, withBook, curBook, markPaid, BOOKS } from '../core/data.js';
 import { byTime, tasksBetween, completeTask, timeLeft, isMissingCollection } from '../core/tasks.js';
 import { taskSheet } from './tasks.js';
 import { render } from '../router.js';
@@ -101,7 +101,7 @@ export async function homeScreen(route, alive) {
     <section class="hero">
       <div class="hero-top">
         <a class="bal-btn" href="#/overview" aria-label="Баланс на сегодня ${moneySigned(balance)}. Открыть обзор">
-          <span class="label">Баланс на сегодня</span><span class="big">${moneySigned(balance)}</span></a>
+          <span class="label">Баланс на сегодня${state.book === 'personal' ? '' : ` · ${BOOKS[state.book]}`}</span><span class="big">${moneySigned(balance)}</span></a>
         <div class="hero-side">
           <a class="ov-link" href="#/overview" tabindex="-1" aria-hidden="true">Обзор${ICON.right}</a>
           <button type="button" class="icon-btn ghost cash-btn" id="cash" aria-label="Изменить остаток на руках">${ICON.edit}</button>
