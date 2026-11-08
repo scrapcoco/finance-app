@@ -8,8 +8,9 @@ export const state = {
   repDay: null,
   repWeek: null,
   histKind: 'all',
-  // Книга: personal | business | all (запоминается между запусками)
-  book: (() => { try { return localStorage.getItem('book') || 'personal'; } catch (e) { return 'personal'; } })(),
+  // Книга: переключателя нет — видно всё (Личное и Бизнес вместе), новые записи — в «Личное».
+  // Позже выбор «для себя / для бизнеса» будет при регистрации
+  book: 'all',
   histQuery: '',
   ovKind: 'expense',
   debtDir: 'owe',

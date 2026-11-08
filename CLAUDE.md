@@ -55,7 +55,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 
 Маршруты — hash: `#/`, `#/add?kind=&date=&debt=&project=&back=`, `#/edit/<id>`, `#/calendar`, `#/history` (на ПК → `#/records`), `#/overview` (`#/reports` — то же; на телефоне в меню нет — открывается нажатием на баланс), `#/tasks`, `#/debts`, `#/projects`, `#/project/<id>`, `#/settings`.
 
-Книги: переключатель «Личное · Бизнес · Всё» (`mountBookBar` в `router.js`, `state.book`, localStorage `book`). У записей, категорий и долгов поле `book` personal|business, пусто = «Личное». Запросы списков — через `withBook()`.
+Книги: переключателя нет (убран 2026-11-08) — `state.book` всегда `all`: видно всё вместе, новые записи — в «Личное», выбора книги в форме нет. Позже книгу выберут при регистрации («для себя / для бизнеса»). У записей, категорий и долгов поле `book` personal|business, пусто = «Личное». Запросы списков — через `withBook()`.
 
 ## Данные (коллекции PocketBase)
 

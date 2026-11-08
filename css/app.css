@@ -910,10 +910,10 @@ a { color: var(--soft); }
 .nudge-ic.late, .nudge-k.late { color: var(--danger); }
 .nudge .btn.small { flex: none; padding: 0 12px; height: 38px; }
 /* Сумма платежа не обрезается — сокращается только название */
-.pay-name { display: flex; gap: 6px; min-width: 0; }
+.pay-name { display: flex; gap: 5px; min-width: 0; }
 .pay-name .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .pay-name .sum { flex: none; }
-.pay-name .t::after { content: " ·"; }
+.pay-name .sum::before { content: "· "; }
 @media (max-width: 360px) {
   .nudge { gap: 10px; padding: 10px 10px 10px 12px; }
   .nudge-link { gap: 10px; }

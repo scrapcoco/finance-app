@@ -4,7 +4,7 @@ import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid, ownerFilter } from '../core/pb.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
-import { getFields, getProjects, bumpDebtDue, debtKind, afterPaid, paidText, curBook, bookOf, BOOKS } from '../core/data.js';
+import { getFields, getProjects, bumpDebtDue, debtKind, afterPaid, paidText, curBook, bookOf } from '../core/data.js';
 
 export function viewAdjust(tx) {
   $view.innerHTML = `
@@ -98,7 +98,6 @@ export async function viewForm(tx, route, alive) {
         </div>
       </div>
       <div class="form-list">
-        <div class="frow"><label for="bk">Книга</label><select id="bk">${Object.entries(BOOKS).filter(([k]) => k !== 'all').map(([k, v]) => `<option value="${k}" ${f.book === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
         ${pjOpts.length ? `<div class="frow"><label for="pj">Проект</label><select id="pj"><option value="">Без проекта</option>${pjOpts.map((x) => `<option value="${x.id}" ${f.project === x.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` : ''}
         <div class="frow"><label for="dt">Дата</label><input id="dt" type="date" value="${esc(f.date)}"></div>
         <div class="frow"><label for="nt">Комментарий</label><input id="nt" maxlength="500" placeholder="Например, аренда" value="${esc(f.note)}"></div>
@@ -145,7 +144,6 @@ export async function viewForm(tx, route, alive) {
       if (!tx && f.date > today() && !f.planned) { f.planned = true; draw(); }
     };
     q('#nt').oninput = (e) => { f.note = e.target.value; };
-    q('#bk').onchange = (e) => { f.book = e.target.value; f.category = ''; f.debt = ''; if (f.book !== 'business') f.project = ''; draw(); };
     if (q('#pj')) q('#pj').onchange = (e) => { f.project = e.target.value; };
     $view.querySelectorAll('[data-kind]').forEach((b) => b.onclick = () => {
       if (f.kind === b.dataset.kind) return;
