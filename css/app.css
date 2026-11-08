@@ -970,5 +970,5 @@ a { color: var(--soft); }
 /* iPhone увеличивает страницу, если шрифт поля меньше 16px, — и после ввода экран «уезжает» за края.
    На телефоне все поля ввода — 16px */
 @media (max-width: 959px) {
-  input:not([type="checkbox"]):not([type="radio"]), textarea, select { font-size: 16px !important; }
+  .frow input, .frow select, .search input, .afield input, .quick-add input, .task-note, .sheet input:not(.task-title), .sheet textarea { font-size: 16px; }
 }
