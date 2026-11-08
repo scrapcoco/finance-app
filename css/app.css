@@ -1079,8 +1079,9 @@ a { color: var(--soft); }
 .asst-chips::-webkit-scrollbar { display: none; }
 .asst-chips .chip { white-space: nowrap; flex: none; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; border-color: var(--glass-line); }
 .asst-input { display: flex; align-items: center; gap: 8px; border: 1px solid var(--glass-line); border-radius: 16px; padding: 4px 4px 4px 14px; margin: 0; }
-.asst-input input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--ink); font: inherit; font-size: 16px; height: 40px; }
-.asst-input input::placeholder { color: var(--dim); }
+.asst-input { align-items: flex-end; }
+.asst-input textarea { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--ink); font: inherit; font-size: 16px; line-height: 22px; height: 40px; padding: 9px 0; resize: none; overflow-y: auto; display: block; }
+.asst-input textarea::placeholder { color: var(--dim); }
 .asst-input .qa-btn:disabled { opacity: .5; }
 .asst .rise { animation: asst-rise .28s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes asst-rise { from { opacity: 0; transform: translateY(8px); } }
@@ -1119,3 +1120,11 @@ html.asst-open, html.asst-open body { overflow: hidden; overscroll-behavior: non
   .asst-msg > .asst-av { display: none; } /* на узком экране аватар у каждого ответа отнимал ширину */
   .bub.ai { border-radius: 18px 18px 18px 6px; }
 }
+
+/* Помощник: кнопка диктовки; пока слушает — голубая и «дышит» */
+.asst-mic { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--glass-line); background: transparent; color: var(--soft); display: flex; align-items: center; justify-content: center; flex: none; padding: 0; }
+.asst-mic svg { width: 19px; height: 19px; }
+.asst-mic.on { color: var(--ground); background: var(--inc); border-color: var(--inc); animation: asst-mic 1.2s ease-in-out infinite; }
+.asst-mic:disabled { opacity: .5; }
+@keyframes asst-mic { 50% { box-shadow: 0 0 0 6px rgba(185,201,250,.25); } }
+@media (prefers-reduced-motion: reduce) { .asst-mic.on { animation: none; } }

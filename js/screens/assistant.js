@@ -11,6 +11,9 @@ import { render } from '../router.js';
 const CONSENT = 'asstConsent';
 const hasConsent = () => { try { return localStorage.getItem(CONSENT) === '1'; } catch (e) { return false; } };
 const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Диктовка: распознавание речи браузера (Safari, Chrome). Где его нет, кнопки микрофона нет — остаётся микрофон на клавиатуре
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, listening = false;
 const CHIPS = ['Что у меня сегодня?', 'Сколько потратил в этом месяце?', 'Спланируй завтра'];
 
 // Переписка живёт, пока открыто приложение
@@ -83,6 +86,7 @@ export function openAssistant(fromBtn) {
 function closeAssistant() {
   const box = $sheetRoot.querySelector('.asst');
   if (!box) return;
+  if (listening) rec?.stop();
   const done = () => {
     if ($sheetRoot.querySelector('.asst')) $sheetRoot.innerHTML = '';
     document.documentElement.classList.remove('asst-open');
@@ -121,7 +125,8 @@ function draw(box, keepDraft = true) {
       ${empty ? `<div class="asst-chips">${CHIPS.map((c) => `<button type="button" class="chip" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}
       <form class="asst-input" id="asst-form" autocomplete="off">
         <label for="asst-q" class="sr-only">Вопрос помощнику</label>
-        <input id="asst-q" maxlength="800" placeholder="Спроси или попроси…" value="${esc(draft)}" ${chat.busy ? 'disabled' : ''}>
+        <textarea id="asst-q" rows="1" maxlength="800" placeholder="Напиши или скажи…" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" ${chat.busy ? 'disabled' : ''}>${esc(draft)}</textarea>
+        ${SR ? `<button type="button" class="asst-mic ${listening ? 'on' : ''}" id="asst-mic" aria-pressed="${listening}" aria-label="${listening ? 'Остановить диктовку' : 'Сказать голосом'}" ${chat.busy ? 'disabled' : ''}>${ICON.mic}</button>` : ''}
         <button type="submit" class="qa-btn" aria-label="Отправить" ${chat.busy ? 'disabled' : ''}>${ICON.up}</button>
       </form></div>` : ''}`;
   const body = box.querySelector('#asst-body');
@@ -131,6 +136,16 @@ function draw(box, keepDraft = true) {
   box.querySelectorAll('[data-chip]').forEach((b) => b.onclick = () => ask(box, b.dataset.chip));
   const form = box.querySelector('#asst-form');
   if (form) form.onsubmit = (e) => { e.preventDefault(); ask(box, box.querySelector('#asst-q').value); };
+  // Многострочное поле (у него на iPhone нет полосы автозаполнения паролей и контактов): Enter — отправить,
+  // Shift+Enter — новая строка; поле растёт до 4 строк
+  const q = box.querySelector('#asst-q');
+  if (q) {
+    const grow = () => { q.style.height = 'auto'; q.style.height = `${Math.min(q.scrollHeight, 96)}px`; };
+    q.addEventListener('input', grow);
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
+    grow();
+  }
+  box.querySelector('#asst-mic')?.addEventListener('click', () => toggleMic(box));
   box.querySelectorAll('[data-rm]').forEach((b) => b.onclick = () => {
     const [mi, ai] = b.dataset.rm.split(':').map(Number);
     chat.msgs[mi].actions.splice(ai, 1);
@@ -139,9 +154,42 @@ function draw(box, keepDraft = true) {
   box.querySelectorAll('[data-add]').forEach((b) => b.onclick = () => addAll(box, Number(b.dataset.add), b));
 }
 
+function toggleMic(box) {
+  if (listening) { rec?.stop(); return; }
+  const base = (box.querySelector('#asst-q')?.value || '').trim();
+  try {
+    rec = new SR();
+    rec.lang = 'ru-RU';
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onresult = (e) => {
+      let text = '';
+      for (const r of e.results) text += r[0].transcript;
+      const el = box.querySelector('#asst-q');
+      if (!el) return;
+      el.value = (base ? base + ' ' : '') + text.trim();
+      el.dispatchEvent(new Event('input'));
+    };
+    const stop = () => { listening = false; rec = null; const b = box.querySelector('#asst-mic'); if (b) { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-label', 'Сказать голосом'); } };
+    rec.onend = stop;
+    rec.onerror = (e) => {
+      stop();
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        chat.msgs.push({ role: 'assistant', text: 'Нет доступа к микрофону. Разреши его в настройках телефона или нажми микрофон на клавиатуре.', actions: [], error: true });
+        draw(box);
+      }
+    };
+    rec.start();
+    listening = true;
+    const b = box.querySelector('#asst-mic');
+    b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); b.setAttribute('aria-label', 'Остановить диктовку');
+  } catch (e) { listening = false; rec = null; }
+}
+
 async function ask(box, text) {
   text = String(text || '').trim();
   if (!text || chat.busy) return;
+  if (listening) rec?.stop();
   chat.msgs.push({ role: 'user', text });
   chat.busy = true;
   draw(box, false);
