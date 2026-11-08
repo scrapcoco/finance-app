@@ -1089,3 +1089,14 @@ a { color: var(--soft); }
   .asst, .asst-backdrop, .asst .rise, .asst-btn.spark-pop { animation: none; }
   .asst.think { animation: none; border-color: rgba(185,201,250,.9); }
 }
+
+/* Узкие телефоны: в шапке главной месяц + две кнопки (помощник, настройки) — всё помещается в ширину */
+@media (max-width: 400px) {
+  .month-switch .title { min-width: 0; padding: 0 2px; white-space: nowrap; }
+  .month-switch .icon-btn.ghost { width: 36px; }
+  .head-btns { gap: 6px; }
+}
+@media (max-width: 350px) {
+  .head .title { font-size: 16px; }
+  .head-btns .icon-btn { width: 40px; height: 40px; }
+}
