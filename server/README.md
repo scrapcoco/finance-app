@@ -22,6 +22,8 @@ Netlify эту папку не отдаёт (правило в `netlify.toml`), 
 | `pb_hooks/finance_trading.pb.js` | `/opt/pocketbase/pb_hooks/` — доступ к боту по коду, приём сводки с Mac (`X-Trading-Key`) |
 | `trading_push.py` | `/opt/finance-reminders/trading_push.py` — push о сделках бота участникам (раз в минуту) |
 | `finance-trading-push.service` / `.timer` | `/etc/systemd/system/` — запуск `trading_push.py` раз в минуту |
+| `task_push.py` | `/opt/finance-reminders/task_push.py` — push о делах: во время дела или за 15/30/60 минут (поле `tasks.remind`), раз в минуту |
+| `finance-task-push.service` / `.timer` | `/etc/systemd/system/` — запуск `task_push.py` раз в минуту |
 
 Что **не** кладём в репозиторий (он публичный):
 - `vapid_private.pem` — приватный ключ push-уведомлений, лежит только на сервере рядом с `remind.py`;

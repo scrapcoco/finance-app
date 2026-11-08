@@ -27,9 +27,9 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `core/state.js` | `state`: выбранный месяц/день/период/фильтры + `state.cache` справочников |
 | `core/data.js` | книги (`BOOKS`, `curBook`, `bookOf`, `bookFilter`, `withBook`), `getCats/getFields/getDebts/getProjects` (кэш), `txBetween`, `ensureDefaults(book)`, `markPaid`, `bumpDebtDue`, `getBalance` |
 | `screens/login.js` | вход, регистрация по инвайт-коду, `termsSheet`, `COPYRIGHT` |
-| `core/tasks.js` | дела: `TASK_REPEAT`, `taskDay`, `byTime`, `tasksBetween`, `overdueTasks`, `somedayTasks`, `nextTaskDay`, `newTask`, `completeTask` (у повторяющегося создаёт следующее, возвращает «Отменить»), `timeLeft`, `isMissingCollection` |
+| `core/tasks.js` | дела: `TASK_REPEAT`, `TASK_REMIND`, `taskDay`, `byTime`, `tasksBetween`, `overdueTasks`, `somedayTasks`, `nextTaskDay`, `newTask`, `completeTask` (у повторяющегося создаёт следующее, возвращает «Отменить»), `timeLeft`, `isMissingCollection` |
 | `screens/home.js` | `homeScreen`: баланс (нажатие → «Обзор», карандаш → `cashSheet`) и «Не пропустить» — платежи по завтра включительно и до двух ближайших дел со временем, остальное ссылкой; если срочного нет — под балансом пусто. Списков записей на главной нет |
-| `screens/tasks.js` | `tasksScreen` («Дела»: неделя, быстрое добавление, «Вчера остались…» → перенести/отложить, дела дня, «Сделано · N», «Когда-нибудь»), `taskSheet` (окно дела), `bindTaskRows` |
+| `screens/tasks.js` | `tasksScreen` («Дела»: неделя, быстрое добавление, «Вчера остались…» → перенести/отложить, дела дня, «Сделано · N», «Когда-нибудь»), `taskSheet` (окно дела; «Напомнить» активно, когда есть время; если уведомления на устройстве выключены — ссылка в настройки), `bindTaskRows` |
 | `screens/assistant.js` | `openAssistant(btn)` — помощник (ИИ): искорка на главной → голубая волна, стеклянное окно с перепиской «пузырями», рамка «дышит», пока думает, ответ печатается; предложенные записи (дела, расходы, доходы, будущие платежи) добавляются только по «Добавить всё»; первое открытие — согласие (localStorage `asstConsent`) |
 | `screens/form.js` | `addScreen`, `editScreen`, `viewForm`, `viewAdjust` (корректировка), `newCategorySheet` |
 | `screens/calendar.js` | `calendarScreen` — сетка месяца, «Отметить оплаченным» |
@@ -69,7 +69,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 - `custom_fields`: `label`, `field_type` text|number|select|date|bool|url, `options`, `sort`, `hidden`
 - `debts`: `name`, `total`, `monthly_payment`, `next_due`, `note`, `closed`, `direction` owe|lent (пусто = owe), `book`
 - `projects`: `name`, `kind` online|physical|other, `color`, `archived`, `note`; у `transactions` — `book` и `project`→projects (только у «Бизнеса»)
-- `tasks` (`server/1793400000_tasks.js`): `title`, `day` (пусто = «Когда-нибудь»), `time` «ЧЧ:ММ», `note`, `done`, `done_at`, `repeat` none|daily|weekdays|weekly|monthly, `remind` (под будущие напоминания); пока миграции нет на сервере, «Дела» показывают «обновим сервер», главная — без дел
+- `tasks` (`server/1793400000_tasks.js`): `title`, `day` (пусто = «Когда-нибудь»), `time` «ЧЧ:ММ», `note`, `done`, `done_at`, `repeat` none|daily|weekdays|weekly|monthly, `remind` none|at|15|30|60 — push-напоминание (у нового дела со временем по умолчанию `at`), шлёт `server/task_push.py` раз в минуту
 - `assistant_usage` (`server/1793500000_assistant_usage.js`): `owner`, `day`, `count`, `tokens_in`, `tokens_out` — вопросы помощнику за день (лимит 30), пишет только хук
 - `push_subscriptions`: `endpoint`, `p256dh`, `auth`, `device`
 - торговый бот: `trading_members` (`user`; создаёт только хук по коду), `trading_status` (одна запись `tradingstatus00`, `data` json), `trading_events` (`type`, `bot`, `text`, `at`); читать могут только участники; `trading_config` закрыт

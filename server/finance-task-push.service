@@ -1,0 +1,11 @@
+[Unit]
+Description=Финансы: push-уведомления о делах
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=pocketbase
+Group=pocketbase
+WorkingDirectory=/opt/finance-reminders
+Environment=VAPID_CONTACT=mailto:YOUR_EMAIL
+ExecStart=/opt/finance-reminders/venv/bin/python /opt/finance-reminders/task_push.py

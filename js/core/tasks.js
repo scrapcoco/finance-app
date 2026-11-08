@@ -4,6 +4,8 @@ import { pb, uid, ownerFilter } from './pb.js';
 
 export const TASK_REPEAT = { none: 'Не повторять', daily: 'Каждый день', weekdays: 'По будням', weekly: 'Каждую неделю', monthly: 'Каждый месяц' };
 
+export const TASK_REMIND = { none: 'Не напоминать', at: 'Во время дела', 15: 'За 15 минут', 30: 'За 30 минут', 60: 'За час' };
+
 export const taskDay = (t) => (t.day || '').slice(0, 10);
 
 // Сначала дела со временем (по порядку), потом без времени — в порядке добавления
@@ -39,7 +41,8 @@ export function nextTaskDay(s, repeat) {
   return null;
 }
 
-export const newTask = (data) => pb.collection('tasks').create({ repeat: 'none', remind: 'none', note: '', time: '', ...data, owner: uid() });
+// Дело со временем по умолчанию напоминает в момент начала (push шлёт server/task_push.py)
+export const newTask = (data) => pb.collection('tasks').create({ repeat: 'none', note: '', time: '', remind: data.time ? 'at' : 'none', ...data, owner: uid() });
 
 // Отметить сделанным. У повторяющегося — создать следующее. Возвращает функцию «Отменить».
 export async function completeTask(t) {

@@ -4,7 +4,7 @@ import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { pb } from '../core/pb.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
-import { TASK_REPEAT, taskDay, byTime, tasksBetween, overdueTasks, somedayTasks, newTask, completeTask, uncompleteTask, isMissingCollection } from '../core/tasks.js';
+import { TASK_REPEAT, TASK_REMIND, taskDay, byTime, tasksBetween, overdueTasks, somedayTasks, newTask, completeTask, uncompleteTask, isMissingCollection } from '../core/tasks.js';
 import { render } from '../router.js';
 
 const WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -179,7 +179,8 @@ export function taskSheet(t, defaults = {}) {
   let mode = modeOf(day);
   const draw = (s) => {
     const keep = (sel, fallback) => s.querySelector(sel)?.value ?? fallback;
-    const vTitle = keep('#tt', t?.title || ''), vTime = keep('#ttime', t?.time || ''), vRep = keep('#trep', t?.repeat || 'none'), vNote = keep('#tnote', t?.note || '');
+    const vTitle = keep('#tt', t?.title || ''), vTime = keep('#ttime', t?.time || ''), vRep = keep('#trep', t?.repeat || 'none'), vNote = keep('#tnote', t?.note || ''), vRem = keep('#trem', t ? (t.remind || 'none') : 'at');
+    const noPush = !('Notification' in window) || Notification.permission !== 'granted';
     const chip = (m, label, extra = '') => `<button type="button" class="chip ${extra}" data-when="${m}" aria-pressed="${mode === m}">${label}</button>`;
     s.innerHTML = `
       <label for="tt" class="sr-only">Что сделать</label>
@@ -192,7 +193,9 @@ export function taskSheet(t, defaults = {}) {
         ${mode === 'pick' ? `<div class="frow"><label for="tday">День</label><input id="tday" type="date" value="${esc(day)}"></div>` : ''}
         <div class="frow"><label for="ttime">Время</label><input id="ttime" type="time" value="${esc(vTime)}" ${mode === 'someday' ? 'disabled' : ''}></div>
         <div class="frow"><label for="trep">Повтор</label><select id="trep" ${mode === 'someday' ? 'disabled' : ''}>${Object.entries(TASK_REPEAT).map(([k, v]) => `<option value="${k}" ${vRep === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+        <div class="frow"><label for="trem">Напомнить</label><select id="trem" ${mode === 'someday' || !vTime ? 'disabled' : ''}>${Object.entries(TASK_REMIND).map(([k, v]) => `<option value="${k}" ${vRem === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
       </div>
+      ${mode !== 'someday' && noPush ? `<a class="task-push-hint" href="#/settings" ${vTime && vRem !== 'none' ? '' : 'hidden'}>Уведомления на этом устройстве выключены — включить в настройках</a>` : ''}
       ${showNote ? `<div class="form-list"><label for="tnote" class="sr-only">Заметка</label><textarea id="tnote" class="task-note" maxlength="1000" rows="3" placeholder="Заметка">${esc(vNote)}</textarea></div>`
         : '<button type="button" class="link-btn" id="add-note" style="align-self:flex-start">+ Заметка</button>'}
       <div class="error" id="terr" role="alert"></div>
@@ -207,6 +210,15 @@ export function taskSheet(t, defaults = {}) {
       if (mode === 'pick') s.querySelector('#tday')?.showPicker?.();
     });
     s.querySelector('#tday')?.addEventListener('change', (e) => { if (e.target.value) { day = e.target.value; mode = modeOf(day); draw(s); } });
+    const syncRemind = () => {
+      const time = s.querySelector('#ttime').value, rem = s.querySelector('#trem');
+      rem.disabled = !time || mode === 'someday';
+      const hint = s.querySelector('.task-push-hint');
+      if (hint) hint.hidden = !time || rem.value === 'none';
+    };
+    s.querySelector('#ttime').addEventListener('input', syncRemind);
+    s.querySelector('#trem').addEventListener('change', syncRemind);
+    s.querySelector('.task-push-hint')?.addEventListener('click', () => closeSheet());
     s.querySelector('#add-note')?.addEventListener('click', () => { showNote = true; draw(s); s.querySelector('#tnote')?.focus(); });
     s.querySelector('#tt').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } };
     s.querySelector('#tsave').onclick = save;
@@ -227,6 +239,7 @@ export function taskSheet(t, defaults = {}) {
         title, day: day ? pbDate(day) : '',
         time: day ? (s.querySelector('#ttime').value || '') : '',
         repeat: day ? s.querySelector('#trep').value : 'none',
+        remind: day ? s.querySelector('#trem').value : 'none',
         note: s.querySelector('#tnote')?.value.trim() ?? (t?.note || '')
       };
       const btn = s.querySelector('#tsave'); btn.disabled = true;
