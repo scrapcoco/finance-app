@@ -9,13 +9,13 @@ import { donut, SLOTS, OTHER } from './overview.js';
 import { render } from '../router.js';
 
 export const KINDS = { online: 'Онлайн-проект', physical: 'Физический бизнес', other: 'Другое' };
-const sum = (arr, kind) => arr.filter((t) => t.kind === kind).reduce((s, t) => s + t.amount, 0);
-const pct = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(Math.round(v))}%`;
+export const sum = (arr, kind) => arr.filter((t) => t.kind === kind).reduce((s, t) => s + t.amount, 0);
+export const pct = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(Math.round(v))}%`;
 // Рост прибыли к прошлому месяцу; если в прошлом месяце прибыли не было — роста не считаем
-const growth = (cur, prev) => (prev === 0 ? null : ((cur - prev) / Math.abs(prev)) * 100);
+export const growth = (cur, prev) => (prev === 0 ? null : ((cur - prev) / Math.abs(prev)) * 100);
 
 // Маленький график прибыли за 6 месяцев (линия), ноль — тонкой линией
-function spark(values) {
+export function spark(values) {
   const W = 84, H = 26, min = Math.min(0, ...values), max = Math.max(0, ...values), span = max - min || 1;
   const pts = values.map((v, i) => `${((i / (values.length - 1)) * W).toFixed(1)},${(H - ((v - min) / span) * H).toFixed(1)}`).join(' ');
   const zero = (H - ((0 - min) / span) * H).toFixed(1);
@@ -36,11 +36,10 @@ function onlyBusiness() {
   $view.querySelector('#to-biz').onclick = () => document.querySelector('[data-book="business"]')?.click();
 }
 
-export async function projectsScreen(route, alive) {
-  if (state.book === 'personal') return onlyBusiness();
-  const m = state.month;
+// Проекты за месяц m: прибыль, маржа, рост к прошлому месяцу и прибыль за полгода (для графика); итоги по активным.
+// Нужна и экрану «Проекты», и главной бизнеса на ПК
+export async function projectStats(m) {
   const [projects, txs] = await Promise.all([getProjects(), bizTxs(ymd(addMonths(m, -5)), ymd(addMonths(m, 1)), " && status = 'paid' && project != ''")]);
-  if (!alive()) return;
   const monthKey = (i) => ymd(addMonths(m, -i)).slice(0, 7);
   const rows = projects.map((p) => {
     const mine = txs.filter((t) => t.project === p.id);
@@ -52,6 +51,14 @@ export async function projectsScreen(route, alive) {
   const active = rows.filter((r) => !r.p.archived);
   const totRev = active.reduce((s, r) => s + r.rev, 0), totExp = active.reduce((s, r) => s + r.exp, 0);
   const totG = growth(totRev - totExp, active.reduce((s, r) => s + r.byMonth[4], 0));
+  return { rows, totRev, totExp, totG };
+}
+
+export async function projectsScreen(route, alive) {
+  if (state.book === 'personal') return onlyBusiness();
+  const m = state.month;
+  const { rows, totRev, totExp, totG } = await projectStats(m);
+  if (!alive()) return;
 
   $view.innerHTML = `
     <div class="head"><h1>Проекты</h1>${monthSwitch()}<button class="icon-btn" id="pj-add" aria-label="Новый проект">${ICON.plus}</button></div>

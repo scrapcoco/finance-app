@@ -628,9 +628,41 @@ a { color: var(--soft); }
   .head h1 { font-size: 28px; }
   .hero .big { font-size: 44px; }
 
-  /* Главная: слева баланс и ближайшие платежи, справа последние записи */
-  /* Главная и «Дела» — одна спокойная колонка */
-  .view[data-screen="home"], .view[data-screen="tasks"] { max-width: 680px; }
+  /* «Дела» — одна спокойная колонка. Главная на ПК — две колонки, у каждого вида своя (js/screens/home-desk.js) */
+  .view[data-screen="tasks"] { max-width: 680px; }
+  .view[data-screen="home"] { max-width: 1160px; }
+  .dk-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .dk-business { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+  .dk-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .dk-col > .sec { margin: 0; }
+  .dk-panel .list { padding: 4px 16px; }
+  .dk-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .dk-stat { padding: 16px 18px; gap: 6px; text-decoration: none; color: inherit; }
+  .dk-stat .v { font-size: 26px; letter-spacing: -0.01em; }
+  .dk-stat .ov-sub, .dk-stat .delta { font-size: 12px; margin: 0; }
+  a.dk-stat:hover { outline: 1px solid var(--line); }
+  /* Строки платежей и дел */
+  .dk-pay, .dk-task { gap: 10px; min-height: 54px; }
+  .dk-pay .main, .dk-task .main { text-decoration: none; color: inherit; background: none; border: 0; padding: 0; font: inherit; text-align: left; cursor: pointer; }
+  .dk-pay .meta.late { color: var(--danger); }
+  .dk-pay .amt.inc { color: var(--inc); }
+  .dk-pay .icon-btn { width: 36px; height: 36px; flex: none; }
+  .dk-check { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid var(--muted); background: none; cursor: pointer; padding: 0; }
+  .dk-check:hover { border-color: var(--inc); background: color-mix(in srgb, var(--inc) 18%, transparent); }
+  .dk-time { font-size: 13px; font-weight: 600; color: var(--soft); font-variant-numeric: tabular-nums; }
+  .dk-foot, .dk-more { font-size: 13px; color: var(--muted); padding: 0 4px; text-decoration: none; display: flex; align-items: center; gap: 4px; }
+  .dk-sum { display: flex; gap: 18px; justify-content: flex-end; font-size: 13px; color: var(--muted); padding: 0 4px; }
+  .dk-sum b { color: var(--ink); font-weight: 700; margin-left: 4px; }
+  .dk-sum b.inc { color: var(--inc); }
+  /* Куда уходят деньги: название и сумма, под ними полоска */
+  .dk-cat { padding: 10px 0; display: flex; flex-direction: column; gap: 7px; }
+  .dk-cat + .dk-cat { border-top: 1px solid var(--line); }
+  .dk-cat-top { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+  .dk-cat-top .name { font-weight: 600; }
+  .dk-cat-top .amt { font-weight: 700; white-space: nowrap; }
+  .dk-cat-top small { color: var(--muted); font-weight: 600; margin-left: 4px; }
+  .dk-bar { height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 8%, transparent); overflow: hidden; }
+  .dk-bar i { display: block; height: 100%; border-radius: 3px; }
   .view[data-screen="home"] .head-btns > a.icon-btn[href="#/settings"] { display: none; } /* «Настройки» есть в полоске */
 
   /* Обзор: плитки и график во всю ширину, кольца рядом */

@@ -3,7 +3,7 @@ import { esc } from './core/util.js';
 import { ICON } from './core/icons.js';
 import { pb } from './core/pb.js';
 import { state } from './core/state.js';
-import { $view, $tabbar, errText, closeSheet, placeGlow, freezeGlows } from './ui.js';
+import { $view, $tabbar, $sheetRoot, errText, closeSheet, placeGlow, freezeGlows } from './ui.js';
 import { viewLogin } from './screens/login.js';
 import { homeScreen } from './screens/home.js';
 import { addScreen, editScreen } from './screens/form.js';
@@ -68,6 +68,7 @@ matchMedia('(min-width: 960px)').addEventListener('change', () => {
   if (!pb.authStore.isValid) return;
   glowFrom = null;
   renderTabbar(tabOf(parseRoute().name));
+  if (parseRoute().name === '' && !$sheetRoot.innerHTML.trim()) render(); // у главной на ПК и телефоне разная раскладка
 });
 
 // Окно поменяло размер — края подсветки считаются от размеров меню, ставим её заново (без анимации)
@@ -150,6 +151,7 @@ export async function render() {
     await fn(route, () => seq === renderSeq);
     if (seq !== renderSeq) return;
     $view.dataset.screen = screen;
+    $view.dataset.book = state.book; // CSS: у главной на ПК своя раскладка для «Для себя» и «Для бизнеса»
     $view.classList.toggle('no-tabs', !withTabs);
     if (changing) {
       // Перезапуск анимации появления

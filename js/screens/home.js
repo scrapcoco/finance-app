@@ -10,6 +10,8 @@ import { byTime, tasksBetween, completeTask, timeLeft, isMissingCollection } fro
 import { taskSheet } from './tasks.js';
 import { openAssistant } from './assistant.js';
 import { render } from '../router.js';
+import { deskHome } from './home-desk.js';
+import { projectStats } from './projects.js';
 
 const plural = (n, one, few, many) => {
   const a = n % 10, b = n % 100;
@@ -43,7 +45,9 @@ export async function homeScreen(route, alive) {
   const prevDays = Math.min(new Date().getDate(), daysIn(pm.getFullYear(), pm.getMonth()));
   const prevTo = isCur ? ymd(addDays(pm, prevDays)) : from;
   const tomorrow = ymd(addDays(new Date(), 1));
-  const [balance, monthTx, prevTx, soonPay, todayTasks, weekPay] = await Promise.all([
+  // ПК: своя раскладка по виду аккаунта (home-desk.js) — ей нужны ещё платежи на 2 недели и, у бизнеса, проекты
+  const desk = matchMedia('(min-width: 960px)').matches;
+  const [balance, monthTx, prevTx, soonPay, todayTasks, weekPay, pay14, proj] = await Promise.all([
     getBalance(),
     txBetween(from, to),
     txBetween(ymd(pm), prevTo, "status = 'paid'"),
@@ -58,7 +62,12 @@ export async function homeScreen(route, alive) {
     pb.collection('transactions').getFullList({
       filter: withBook(`${ownerFilter()} && status = 'planned' && ` + pb.filter('date < {:t}', { t: `${ymd(addDays(new Date(), 8))} 00:00:00` })),
       sort: 'date,created', fields: 'kind,amount,date'
-    })
+    }),
+    desk ? pb.collection('transactions').getFullList({
+      filter: withBook(`${ownerFilter()} && status = 'planned' && ` + pb.filter('date < {:t}', { t: `${ymd(addDays(new Date(), 15))} 00:00:00` })),
+      sort: 'date,created', expand: 'category'
+    }) : [],
+    desk && state.book === 'business' ? projectStats(m) : null
   ]);
   if (!alive()) return;
   let inc = 0, exp = 0, plannedNet = 0;
@@ -145,9 +154,8 @@ export async function homeScreen(route, alive) {
   const moreLink = isCur && restTasks > 0
     ? `<a class="someday-link" href="#/tasks">${shownTasks.length ? 'Ещё' : 'На сегодня'} ${restTasks} ${plural(restTasks, 'дело', 'дела', 'дел')}${ICON.right}</a>` : '';
 
-  $view.innerHTML = `
-    <div class="head">${monthSwitch()}<div class="head-btns"><button type="button" class="icon-btn asst-btn" id="asst" aria-label="Помощник">${ICON.spark}</button><a class="icon-btn" href="#/settings" aria-label="Настройки">${ICON.gear}</a></div></div>
-    <section class="hero">
+  const head = `<div class="head">${monthSwitch()}<div class="head-btns"><button type="button" class="icon-btn asst-btn" id="asst" aria-label="Помощник">${ICON.spark}</button><a class="icon-btn" href="#/settings" aria-label="Настройки">${ICON.gear}</a></div></div>`;
+  const hero = `<section class="hero">
       <div class="hero-top">
         <a class="bal-btn" href="#/overview" aria-label="Баланс на сегодня ${moneySigned(balance)}. Открыть обзор">
           <span class="label"><span>Баланс на сегодня</span><span class="ov-link" aria-hidden="true">Обзор${ICON.right}</span></span>
@@ -159,20 +167,25 @@ export async function homeScreen(route, alive) {
         <div><div class="k">Расходы</div><div class="v exp">−${money(exp)}</div>${delta(exp, prevExp, false)}</div>
       </div>
       ${note ? `<div class="note">${esc(note)}</div>` : ''}
-    </section>
+    </section>`;
+  // На ПК платежи и дела — в своих колонках, поэтому из «Не пропустить» остаются только предупреждение и итоги недели
+  const alerts = isCur ? [...(shortage ? [shortCard(shortage)] : []), ...(review ? [reviewCard()] : [])].join('') : '';
+  $view.innerHTML = desk
+    ? head + deskHome({ book: state.book, m, isCur, balance, forecast: isCur && plannedNet ? `${moneySigned(balance + plannedNet)} к ${lastDay}` : '', inc, exp, prevInc, prevExp, delta, note, hero, alerts, monthTx, pay14, tasks: todayTasks.slice().sort(byTime), proj })
+    : `${head}${hero}
     ${nudges || moreLink ? `<section class="sec nudges" aria-label="Не пропустить">${nudges}${moreLink}</section>` : ''}`;
   bindMonthSwitch();
   $view.querySelector('#asst').onclick = (e) => openAssistant(e.currentTarget);
-  $view.querySelector('#cash').onclick = () => cashSheet(balance);
+  $view.querySelector('#cash')?.addEventListener('click', () => cashSheet(balance));
   $view.querySelector('#rv-x')?.addEventListener('click', () => { writeReview({ ...readReview(), hidden: true }); render(); });
   if (isCur) loadReview(alive);
   $view.querySelectorAll('[data-pay]').forEach((b) => b.onclick = async () => {
     b.disabled = true;
-    try { await markPaid(pays.find((t) => t.id === b.dataset.pay)); render(); }
+    try { await markPaid([...pays, ...pay14].find((t) => t.id === b.dataset.pay)); render(); }
     catch (e) { toast(errText(e)); b.disabled = false; }
   });
   $view.querySelectorAll('[data-done]').forEach((b) => b.onclick = async () => {
-    const t = shownTasks.find((x) => x.id === b.dataset.done); if (!t) return;
+    const t = todayTasks.find((x) => x.id === b.dataset.done); if (!t) return;
     b.disabled = true;
     try {
       const undo = await completeTask(t);
@@ -180,7 +193,7 @@ export async function homeScreen(route, alive) {
       render();
     } catch (e) { toast(errText(e)); b.disabled = false; }
   });
-  $view.querySelectorAll('[data-open]').forEach((b) => b.onclick = () => { const t = shownTasks.find((x) => x.id === b.dataset.open); if (t) taskSheet(t); });
+  $view.querySelectorAll('[data-open]').forEach((b) => b.onclick = () => { const t = todayTasks.find((x) => x.id === b.dataset.open); if (t) taskSheet(t); });
 }
 
 export function cashSheet(balance) {
