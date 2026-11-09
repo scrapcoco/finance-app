@@ -1,6 +1,6 @@
-// Главная: баланс (нажатие — «Обзор») и только то, что нельзя пропустить: платежи на сегодня-завтра и ближайшие дела.
+// Главная: баланс (нажатие — «Обзор») и только то, что нельзя пропустить: «не хватит денег» на неделе, платежи на сегодня-завтра и ближайшие дела.
 // Если ничего срочного нет — под балансом пусто.
-import { esc, money, net, moneySigned, parseAmount, MONTHS, MONTHS_GEN, MONTHS_SHORT, ymd, pbDate, today, firstOfMonth, addMonths, addDays, daysIn, txDay, daysUntil, signed } from '../core/util.js';
+import { esc, money, net, moneySigned, parseAmount, MONTHS, MONTHS_GEN, MONTHS_SHORT, WEEKDAYS, humanDate, parseYmd, ymd, pbDate, today, firstOfMonth, addMonths, addDays, daysIn, txDay, daysUntil, signed } from '../core/util.js';
 import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid, ownerFilter } from '../core/pb.js';
@@ -25,7 +25,7 @@ export async function homeScreen(route, alive) {
   const prevDays = Math.min(new Date().getDate(), daysIn(pm.getFullYear(), pm.getMonth()));
   const prevTo = isCur ? ymd(addDays(pm, prevDays)) : from;
   const tomorrow = ymd(addDays(new Date(), 1));
-  const [balance, monthTx, prevTx, soonPay, todayTasks] = await Promise.all([
+  const [balance, monthTx, prevTx, soonPay, todayTasks, weekPay] = await Promise.all([
     getBalance(),
     txBetween(from, to),
     txBetween(ymd(pm), prevTo, "status = 'paid'"),
@@ -35,7 +35,12 @@ export async function homeScreen(route, alive) {
       sort: 'date,created', expand: 'category'
     }),
     // Дела на сегодня; если сервер ещё без коллекции дел — просто без них
-    tasksBetween(today(), today()).catch((e) => { if (isMissingCollection(e)) return []; throw e; })
+    tasksBetween(today(), today()).catch((e) => { if (isMissingCollection(e)) return []; throw e; }),
+    // Платежи на неделю вперёд (и просроченные) — для предупреждения «не хватит денег»
+    pb.collection('transactions').getFullList({
+      filter: withBook(`${ownerFilter()} && status = 'planned' && ` + pb.filter('date < {:t}', { t: `${ymd(addDays(new Date(), 8))} 00:00:00` })),
+      sort: 'date,created', fields: 'kind,amount,date'
+    })
   ]);
   if (!alive()) return;
   let inc = 0, exp = 0, plannedNet = 0;
@@ -93,7 +98,26 @@ export async function homeScreen(route, alive) {
         <span class="name">${esc(t.title)}</span></span></button>
       <button type="button" class="btn small secondary" data-done="${t.id}">Сделано</button></div>`;
   };
-  const nudges = isCur ? [...pays.map(payCard), ...shownTasks.map(taskCard)].join('') : '';
+  // Предупреждение: идём по платежам недели по порядку дат — в какой день денег на руках станет меньше нуля
+  const shortage = (() => {
+    let run = balance, need = 0;
+    for (const t of weekPay) {
+      if (t.kind === 'expense') need += t.amount;
+      run += net(t);
+      if (t.kind === 'expense' && run < 0) return { day: txDay(t), need, lack: -run };
+    }
+    return null;
+  })();
+  const shortCard = (w) => {
+    const n = daysUntil(w.day);
+    const when = n <= 0 ? 'сегодня' : n === 1 ? 'завтра' : `к ${humanDate(w.day)}, ${WEEKDAYS[parseYmd(w.day).getDay()]}`;
+    return `<div class="card nudge">
+      <a class="nudge-link" href="#/calendar">
+        <span class="nudge-ic late">${ICON.cal}</span>
+        <span class="main"><span class="nudge-k late">Не хватит ${money(w.lack)} ${esc(when)}</span>
+        <span class="name">Платежей ${money(w.need)}, на руках ${moneySigned(balance)}</span></span></a></div>`;
+  };
+  const nudges = isCur ? [...(shortage ? [shortCard(shortage)] : []), ...pays.map(payCard), ...shownTasks.map(taskCard)].join('') : '';
   const moreLink = isCur && restTasks > 0
     ? `<a class="someday-link" href="#/tasks">${shownTasks.length ? 'Ещё' : 'На сегодня'} ${restTasks} ${plural(restTasks, 'дело', 'дела', 'дел')}${ICON.right}</a>` : '';
 
