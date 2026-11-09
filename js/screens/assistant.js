@@ -1,5 +1,7 @@
 // Помощник (ИИ): окно с перепиской поверх экрана. Открывается искоркой на главной — от неё идёт голубая волна.
 // Сервер (server/pb_hooks/finance_assistant.pb.js) только предлагает записи; добавляет их приложение после «Добавить всё».
+// «Запомнить» (kind remember) пишет факт в assistant_memory — список и удаление в Настройках. Фото чека/счёта
+// уменьшается здесь до 1568 px и уходит только с этим вопросом (на сервере не хранится).
 import { esc, money, parseYmd, pbDate, today, MONTHS_SHORT, WEEKDAYS, dayOf } from '../core/util.js';
 import { ICON } from '../core/icons.js';
 import { pb, uid } from '../core/pb.js';
@@ -14,7 +16,7 @@ const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 // Диктовка: распознавание речи браузера (Safari, Chrome). Где его нет, кнопки микрофона нет — остаётся микрофон на клавиатуре
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, listening = false;
-const CHIPS = ['Что у меня сегодня?', 'Сколько потратил в этом месяце?', 'Спланируй завтра'];
+const CHIPS = ['Что у меня сегодня?', 'Хватит до зарплаты?', 'Спланируй завтра'];
 
 // Переписка живёт, пока открыто приложение
 const chat = { msgs: [], left: null, busy: false, changed: false };
@@ -27,14 +29,15 @@ function whenText(a) {
   return day + (a.time ? ` в ${a.time}` : '');
 }
 function metaText(a) {
+  if (a.kind === 'remember') return 'Запомнить';
   const what = a.kind === 'task' ? 'Дело' : a.paid ? (a.kind === 'income' ? 'Доход' : 'Расход') : (a.kind === 'income' ? 'Будущий доход' : 'Будущий платёж');
   return [what + ', ' + whenText(a), a.category].filter(Boolean).join(' · ');
 }
 
 function actionRow(a, mi, ai, done) {
   const d = a.date ? parseYmd(a.date) : null;
-  const box = d ? `<b>${d.getDate()}</b><span>${MONTHS_SHORT[d.getMonth()]}</span>` : '<b>…</b>';
-  const amt = a.kind === 'task' ? '' : `<span class="amt ${a.kind === 'income' ? 'inc' : 'exp'}">${a.kind === 'income' ? '+' : '−'}${money(a.amount)}</span>`;
+  const box = a.kind === 'remember' ? ICON.spark : d ? `<b>${d.getDate()}</b><span>${MONTHS_SHORT[d.getMonth()]}</span>` : '<b>…</b>';
+  const amt = a.kind === 'task' || a.kind === 'remember' ? '' : `<span class="amt ${a.kind === 'income' ? 'inc' : 'exp'}">${a.kind === 'income' ? '+' : '−'}${money(a.amount)}</span>`;
   return `<div class="asst-row rise" style="animation-delay:${ai * 120}ms">
     <div class="datebox">${box}</div>
     <div class="main"><div class="name">${esc(a.title)}</div><div class="meta">${esc(metaText(a))}</div></div>${amt}
@@ -42,7 +45,7 @@ function actionRow(a, mi, ai, done) {
 }
 
 function msgHTML(m, mi, last) {
-  if (m.role === 'user') return `<div class="bub me">${esc(m.text)}</div>`;
+  if (m.role === 'user') return `<div class="bub me">${m.img ? `<img class="bub-img" src="${m.img}" alt="Фото">` : ''}${esc(m.text)}</div>`;
   const acts = m.actions || [];
   const typing = last && m.typing != null;
   const text = typing ? m.text.split(' ').slice(0, m.typing).join(' ') : m.text;
@@ -51,7 +54,7 @@ function msgHTML(m, mi, last) {
     <div class="bub ai"><span class="ai-text ${m.error ? 'asst-err' : ''}">${esc(text)}</span>
       ${!typing && acts.length ? `<div class="asst-acts">${acts.map((a, ai) => actionRow(a, mi, ai, m.added)).join('')}</div>
         ${m.added ? `<div class="asst-done rise">${ICON.check}${esc(m.added)}</div>`
-          : `<div class="asst-btns rise"><button type="button" class="btn small" data-add="${mi}">${acts.length > 1 ? 'Добавить всё' : 'Добавить'}</button></div>`}` : ''}
+          : `<div class="asst-btns rise"><button type="button" class="btn small" data-add="${mi}">${acts.every((a) => a.kind === 'remember') ? 'Запомнить' : acts.length > 1 ? 'Добавить всё' : 'Добавить'}</button></div>`}` : ''}
     </div></div>`;
 }
 
@@ -126,6 +129,8 @@ function draw(box, keepDraft = true) {
       <form class="asst-input" id="asst-form" autocomplete="off">
         <label for="asst-q" class="sr-only">Вопрос помощнику</label>
         <textarea id="asst-q" rows="1" maxlength="800" placeholder="Напиши или скажи…" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" ${chat.busy ? 'disabled' : ''}>${esc(draft)}</textarea>
+        <button type="button" class="asst-mic" id="asst-cam" aria-label="Фото чека или счёта" ${chat.busy ? 'disabled' : ''}>${ICON.camera}</button>
+        <input type="file" id="asst-file" accept="image/*" hidden>
         ${SR ? `<button type="button" class="asst-mic ${listening ? 'on' : ''}" id="asst-mic" aria-pressed="${listening}" aria-label="${listening ? 'Остановить диктовку' : 'Сказать голосом'}" ${chat.busy ? 'disabled' : ''}>${ICON.mic}</button>` : ''}
         <button type="submit" class="qa-btn" aria-label="Отправить" ${chat.busy ? 'disabled' : ''}>${ICON.up}</button>
       </form></div>` : ''}`;
@@ -146,6 +151,20 @@ function draw(box, keepDraft = true) {
     grow();
   }
   box.querySelector('#asst-mic')?.addEventListener('click', () => toggleMic(box));
+  const file = box.querySelector('#asst-file');
+  box.querySelector('#asst-cam')?.addEventListener('click', () => file.click());
+  file?.addEventListener('change', async () => {
+    const f = file.files?.[0]; file.value = '';
+    if (!f) return;
+    try {
+      const pic = await shrinkPhoto(f);
+      const q = box.querySelector('#asst-q');
+      ask(box, (q?.value || '').trim() || 'Разбери фото', pic);
+    } catch (e) {
+      chat.msgs.push({ role: 'assistant', text: 'Не получилось открыть фото. Попробуй другое.', actions: [], error: true });
+      draw(box);
+    }
+  });
   box.querySelectorAll('[data-rm]').forEach((b) => b.onclick = () => {
     const [mi, ai] = b.dataset.rm.split(':').map(Number);
     chat.msgs[mi].actions.splice(ai, 1);
@@ -186,11 +205,35 @@ function toggleMic(box) {
   } catch (e) { listening = false; rec = null; }
 }
 
-async function ask(box, text) {
+// Фото → JPEG не больше 1568 px по длинной стороне (так его видит модель; меньше трафика и денег)
+function shrinkPhoto(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, 1568 / Math.max(im.naturalWidth, im.naturalHeight));
+      const w = Math.round(im.naturalWidth * k), h = Math.round(im.naturalHeight * k);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(im, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      const big = c.toDataURL('image/jpeg', 0.85);
+      // маленькая копия — для «пузыря» в переписке
+      const t = document.createElement('canvas'); const tk = Math.min(1, 240 / Math.max(w, h));
+      t.width = Math.round(w * tk); t.height = Math.round(h * tk);
+      t.getContext('2d').drawImage(c, 0, 0, t.width, t.height);
+      resolve({ data: big.split(',')[1], thumb: t.toDataURL('image/jpeg', 0.7) });
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image')); };
+    im.src = url;
+  });
+}
+
+async function ask(box, text, pic) {
   text = String(text || '').trim();
   if (!text || chat.busy) return;
   if (listening) rec?.stop();
-  chat.msgs.push({ role: 'user', text });
+  chat.msgs.push({ role: 'user', text, img: pic?.thumb });
+  if (pic) { const q = box.querySelector('#asst-q'); if (q) q.value = ''; }
   chat.busy = true;
   draw(box, false);
   const n = new Date();
@@ -199,9 +242,9 @@ async function ask(box, text) {
     const res = await pb.send('/api/finance/assistant', {
       method: 'POST',
       body: {
-        messages: chat.msgs.filter((m) => !m.error).map((m) => ({ role: m.role, text: m.role === 'assistant' && m.actions?.length ? `${m.text} [предложено: ${m.actions.map((a) => a.title).join(', ')}${m.added ? '; добавлено' : ''}]` : m.text })),
+        messages: chat.msgs.filter((m) => !m.error).map((m) => ({ role: m.role, text: m.img ? `[фото] ${m.text}` : m.role === 'assistant' && m.actions?.length ? `${m.text} [предложено: ${m.actions.map((a) => a.title).join(', ')}${m.added ? '; добавлено' : ''}]` : m.text })),
         today: today(), now: `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`,
-        book: curBook()
+        ...(pic ? { image: pic.data } : {})
       }
     });
     chat.left = res.left;
@@ -239,7 +282,9 @@ async function addAll(box, mi, btn) {
     const book = curBook();
     let n = 0;
     for (const a of m.actions) {
-      if (a.kind === 'task') {
+      if (a.kind === 'remember') {
+        await pb.collection('assistant_memory').create({ owner: uid(), text: a.title });
+      } else if (a.kind === 'task') {
         await newTask({ title: a.title, day: a.date ? pbDate(a.date) : '', time: a.date ? a.time : '', repeat: a.date ? a.repeat : 'none' });
       } else {
         const cat = cats.find((c) => c.kind === a.kind && c.name.toLowerCase() === (a.category || '').toLowerCase());
@@ -253,7 +298,7 @@ async function addAll(box, mi, btn) {
       n++;
     }
     const word = n === 1 ? 'запись' : n < 5 ? 'записи' : 'записей';
-    m.added = `Добавил ${n} ${word}`;
+    m.added = m.actions.every((a) => a.kind === 'remember') ? 'Запомнил — список в Настройках' : `Добавил ${n} ${word}`;
     chat.changed = true;
   } catch (e) {
     btn.disabled = false;

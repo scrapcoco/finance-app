@@ -1,6 +1,8 @@
 /// <reference path="../pb_data/types.d.ts" />
 // Помощник (ИИ, Claude Haiku). POST /api/finance/assistant, тело:
-//   { messages: [{role: "user"|"assistant", text}], today: "ГГГГ-ММ-ДД", now: "ЧЧ:ММ" }  (book больше не нужен: данные — по всем книгам)
+//   { messages: [{role: "user"|"assistant", text}], today: "ГГГГ-ММ-ДД", now: "ЧЧ:ММ", image?: "<base64 JPEG>" }
+//   (book больше не нужен: данные — по всем книгам; image — фото чека/счёта к последнему сообщению, не хранится)
+// Действия: task | expense | income | remember (запомнить факт — пишет приложение в assistant_memory).
 // Ответ: { reply, actions: [...], left } — действия только предлагаются: записывает их приложение после «Добавить».
 // Ключ Anthropic лежит только на сервере: /opt/pocketbase/secrets/anthropic_key (владелец pocketbase, права 600).
 // Лимит — 30 вопросов в день на пользователя (коллекция assistant_usage). Весь код — внутри обработчика (так требует PocketBase).
@@ -20,7 +22,17 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
     .map((m) => ({ role: m && m.role === "assistant" ? "assistant" : "user", content: String((m && m.text) || "").slice(0, 800).trim() }))
     .filter((m) => m.content);
   while (msgs.length && msgs[0].role !== "user") msgs.shift();
+  // Фото чека или счёта: только JPEG в base64, не больше ~3 МБ (приложение уменьшает до 1568 px)
+  const image = typeof body.image === "string" && body.image.length <= 4000000 && /^[A-Za-z0-9+/=]+$/.test(body.image.slice(0, 200)) ? body.image : "";
+  if (image && (!msgs.length || msgs[msgs.length - 1].role !== "user")) msgs.push({ role: "user", content: "Разбери фото." });
   if (!msgs.length || msgs[msgs.length - 1].role !== "user") throw new BadRequestError("Напиши вопрос.");
+  if (image) {
+    const last = msgs[msgs.length - 1];
+    last.content = [
+      { type: "image", source: { type: "base64", media_type: "image/jpeg", data: image } },
+      { type: "text", text: last.content }
+    ];
+  }
 
   // Ключ
   let key = "";
@@ -135,6 +147,40 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
     }
   } else lines.push("Прошлых месяцев в записях нет — сравнивать «как обычно» пока не с чем.");
 
+  // Привычки, посчитанные по записям: что человек обычно записывает и в какую категорию, когда приходят регулярные доходы
+  const habit = {};
+  for (const t of hist.concat(paid)) {
+    const k = t.getString("kind"), note = t.getString("note").trim();
+    if ((k !== "expense" && k !== "income") || !note) continue;
+    const key = k + "|" + note.toLowerCase().slice(0, 40);
+    const h = habit[key] || (habit[key] = { k, note, n: 0, cats: {}, sums: [], days: {} });
+    h.n++;
+    h.sums.push(t.getFloat("amount"));
+    const c = catName[t.getString("category")];
+    if (c) h.cats[c] = (h.cats[c] || 0) + 1;
+    const dd = Number(day10(t, "date").slice(8, 10));
+    h.days[dd] = (h.days[dd] || 0) + 1;
+  }
+  const median = (a) => { const b = a.slice().sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
+  const habits = Object.keys(habit).map((k) => habit[k]).filter((h) => h.n >= 2).sort((a, b) => b.n - a.n).slice(0, 20);
+  if (habits.length) {
+    lines.push("Привычные записи (по истории; категорию для похожих новых записей бери отсюда):");
+    for (const h of habits) {
+      const cat = Object.keys(h.cats).sort((a, b) => h.cats[b] - h.cats[a])[0];
+      const topDay = Object.keys(h.days).sort((a, b) => h.days[b] - h.days[a])[0];
+      const daySame = h.k === "income" && h.days[topDay] >= 2 ? `, приходит обычно ${topDay}-го` : "";
+      lines.push(`- ${h.k === "income" ? "доход" : "расход"} «${h.note}»${cat ? ` → ${cat}` : ""}, обычно ${r2(median(h.sums))} zł${daySame} (записей: ${h.n})`);
+    }
+  }
+
+  // Что человек сам просил запомнить
+  let memo = [];
+  try { memo = e.app.findRecordsByFilter("assistant_memory", "owner = {:o}", "created", 50, 0, { o: uid }); } catch (_) {}
+  if (memo.length) {
+    lines.push("Человек просил запомнить (это важнее догадок по истории):");
+    for (const m of memo) lines.push(`- ${m.getString("text")}`);
+  }
+
   // Долги: сколько осталось (сумма долга минус оплаченные записи, привязанные к долгу)
   const debts = e.app.findRecordsByFilter("debts", "owner = {:o} && closed = false", "created", 50, 0, { o: uid });
   if (debts.length) {
@@ -158,6 +204,8 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
     `Сегодня ${today} (${wd(today)})${now ? `, сейчас ${now}` : ""}. Валюта — zł.`,
     "Ты можешь: отвечать на вопросы по данным ниже (деньги на руках, дела, платежи, траты, долги, как обычно в прошлые месяцы) и предлагать новые записи.",
     "На вопросы о деньгах («хватит ли до зарплаты», «сколько ушло на еду», «когда закрою долг, если платить по 500») отвечай конкретными цифрами из данных. Готовые расчёты в данных (сколько останется, в день) бери как есть, не пересчитывай. «Хватит ли» — сравни, сколько остаётся в день, с обычными повседневными тратами в день, и скажи прямо: хватит, впритык или не хватит, и на сколько. Если данных не хватает — так и скажи, чего не хватает, и не выдумывай.",
+    "Если человек просит что-то запомнить о себе, своих деньгах или привычках («запомни: зарплата 10-го», «кофе записывай в Еду») — предложи action kind=remember: title — сам факт коротко и понятно («Зарплата приходит 10-го»); date и time пустые, amount 0, paid false, category пустая, repeat none. Уже запомненное повторно не предлагай.",
+    "Если прислано фото чека или квитанции — это уже оплаченный расход (paid=true): сумма ИТОГО, дата с чека (нет даты — сегодня), title — магазин или что куплено, категория по смыслу. Если на фото счёт к оплате — будущий платёж (paid=false) с датой срока оплаты. Если на фото несколько чеков — по записи на каждый. Не можешь разобрать сумму — так и скажи, записей не придумывай.",
     "Если просят разбить большое дело или цель на шаги («переезд в декабре», «подготовиться к отпуску») — предложи 3–8 дел (task) по порядку, с датами между сегодня и сроком; без срока — даты не ставь.",
     "Новые записи клади в actions — приложение покажет их человеку, и он сам нажмёт «Добавить». Сам ты ничего не записываешь, поэтому не пиши «добавил» — пиши, что предлагаешь.",
     "Виды записей: task — дело (не про деньги); expense — расход; income — доход.",
@@ -185,7 +233,7 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
           additionalProperties: false,
           required: ["kind", "title", "date", "time", "amount", "paid", "category", "repeat"],
           properties: {
-            kind: { type: "string", enum: ["task", "expense", "income"] },
+            kind: { type: "string", enum: ["task", "expense", "income", "remember"] },
             title: { type: "string" },
             date: { type: "string" },
             time: { type: "string" },
@@ -241,9 +289,10 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
   // Проверка действий: только понятные и аккуратные значения
   const actions = [];
   for (const a of (Array.isArray(out.actions) ? out.actions : []).slice(0, 10)) {
-    const kind = ["task", "expense", "income"].indexOf(a.kind) >= 0 ? a.kind : "";
-    const title = String(a.title || "").trim().slice(0, 200);
+    const kind = ["task", "expense", "income", "remember"].indexOf(a.kind) >= 0 ? a.kind : "";
+    const title = String(a.title || "").trim().slice(0, kind === "remember" ? 300 : 200);
     if (!kind || !title) continue;
+    if (kind === "remember") { actions.push({ kind, title, date: "", time: "", amount: 0, paid: false, category: "", repeat: "none" }); continue; }
     const date = isYmd(a.date) ? a.date : "";
     const time = /^([01]\d|2[0-3]):[0-5]\d$/.test(String(a.time || "")) ? a.time : "";
     const amount = Math.round(Math.abs(Number(a.amount) || 0) * 100) / 100;

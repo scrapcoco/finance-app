@@ -42,6 +42,7 @@ export async function settingsScreen(route, alive) {
       <button class="btn secondary" id="addf">Добавить поле</button>
     </section>
     <section class="sec"><div class="sec-head"><h2>Категории</h2></div>${catBlock('expense', 'Расходы')}${catBlock('income', 'Доходы')}</section>
+    <section class="sec" id="memo-sec" hidden></section>
     <section class="sec">
       <div class="sec-head"><h2>Интерфейс</h2></div>
       <div class="form-list"><div class="frow"><label id="snd-l">Звук нажатий</label><button type="button" class="switch" id="snd" role="switch" aria-labelledby="snd-l" aria-checked="${soundOn()}"></button></div></div>
@@ -57,6 +58,7 @@ export async function settingsScreen(route, alive) {
     </section>`;
 
   mountPushBlock();
+  mountMemoryBlock(alive);
   mountIngestBlock().then(() => mountTradingCodeBlock());
   $view.querySelector('#addf').onclick = () => fieldSheet(null, fields.length);
   $view.querySelectorAll('[data-editf]').forEach((b) => b.onclick = () => fieldSheet(fields.find((x) => x.id === b.dataset.editf)));
@@ -92,6 +94,25 @@ export async function settingsScreen(route, alive) {
     await forgetThisDevice();
     pb.authStore.clear(); state.cache = { cats: null, fields: null, debts: null }; goHome();
   };
+}
+
+// «Помощник помнит»: факты, которые человек попросил запомнить (assistant_memory). Нет коллекции на сервере — блока нет
+async function mountMemoryBlock(alive) {
+  const sec = $view.querySelector('#memo-sec');
+  let list;
+  try { list = await pb.collection('assistant_memory').getFullList({ filter: ownerFilter(), sort: 'created' }); }
+  catch (e) { return; }
+  if (!alive() || !sec.isConnected) return;
+  sec.hidden = false;
+  sec.innerHTML = `<div class="sec-head"><h2>Помощник помнит</h2></div>
+    ${list.length ? `<div class="list">${list.map((m) => `<div class="row" style="min-height:52px"><div class="main"><div class="name" style="white-space:normal">${esc(m.text)}</div></div>
+      <div class="tools"><button class="icon-btn" data-delmemo="${m.id}" aria-label="Забыть: ${esc(m.text)}">${ICON.trash}</button></div></div>`).join('')}</div>`
+      : '<p class="hint" style="margin:0;color:var(--muted);font-size:13px">Пока ничего. Скажи помощнику, например: «Запомни: зарплата приходит 10-го».</p>'}`;
+  sec.querySelectorAll('[data-delmemo]').forEach((b) => b.onclick = async () => {
+    b.disabled = true;
+    try { await pb.collection('assistant_memory').delete(b.dataset.delmemo); toast('Забыл'); mountMemoryBlock(alive); }
+    catch (e) { toast(errText(e)); b.disabled = false; }
+  });
 }
 
 // Все записи в CSV для Excel/Numbers/Google Таблиц: «;» и запятая в суммах (так открывается в ru/pl Excel), BOM для кириллицы

@@ -1128,5 +1128,9 @@ html.asst-open, html.asst-open body { overflow: hidden; overscroll-behavior: non
 .asst-mic svg { width: 19px; height: 19px; }
 .asst-mic.on { color: var(--ground); background: var(--inc); border-color: var(--inc); animation: asst-mic 1.2s ease-in-out infinite; }
 .asst-mic:disabled { opacity: .5; }
+.bub-img { display: block; max-width: 160px; max-height: 200px; border-radius: 12px; margin: 2px 0 6px auto; }
+.asst-row .datebox svg { width: 18px; height: 18px; color: var(--inc); }
+.asst-input .asst-mic + .asst-mic { margin-left: -4px; }
+.review-text { font-size: 14px; font-weight: 600; line-height: 1.4; white-space: normal; }
 @keyframes asst-mic { 50% { box-shadow: 0 0 0 6px rgba(185,201,250,.25); } }
 @media (prefers-reduced-motion: reduce) { .asst-mic.on { animation: none; } }
