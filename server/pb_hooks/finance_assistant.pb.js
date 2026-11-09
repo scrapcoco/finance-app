@@ -1,6 +1,6 @@
 /// <reference path="../pb_data/types.d.ts" />
 // Помощник (ИИ, Claude Haiku). POST /api/finance/assistant, тело:
-//   { messages: [{role: "user"|"assistant", text}], today: "ГГГГ-ММ-ДД", now: "ЧЧ:ММ", book: "personal"|"business" }
+//   { messages: [{role: "user"|"assistant", text}], today: "ГГГГ-ММ-ДД", now: "ЧЧ:ММ" }  (book больше не нужен: данные — по всем книгам)
 // Ответ: { reply, actions: [...], left } — действия только предлагаются: записывает их приложение после «Добавить».
 // Ключ Anthropic лежит только на сервере: /opt/pocketbase/secrets/anthropic_key (владелец pocketbase, права 600).
 // Лимит — 30 вопросов в день на пользователя (коллекция assistant_usage). Весь код — внутри обработчика (так требует PocketBase).
@@ -14,7 +14,6 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
   const isYmd = (s) => /^\d{4}-\d\d-\d\d$/.test(String(s || ""));
   const today = isYmd(body.today) ? String(body.today) : new Date().toISOString().slice(0, 10);
   const now = /^\d\d:\d\d$/.test(String(body.now || "")) ? String(body.now) : "";
-  const business = body.book === "business";
 
   // История разговора: последние 8 сообщений, каждое не длиннее 800 знаков, последнее — от пользователя
   const msgs = (Array.isArray(body.messages) ? body.messages : []).slice(-8)
@@ -42,10 +41,12 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
   const WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
   const wd = (s) => WD[new Date(s + "T12:00:00Z").getUTCDay()];
   const day10 = (r, f) => r.getString(f).slice(0, 10);
-  const bookF = business ? "book = 'business'" : "book != 'business'";
+  const daysBetween = (a, b) => Math.round((new Date(b + "T12:00:00Z") - new Date(a + "T12:00:00Z")) / 86400000);
+  const r2 = (v) => Math.round(v * 100) / 100;
   const lines = [];
 
-  const cats = e.app.findRecordsByFilter("categories", `owner = {:o} && ${bookF}`, "sort", 100, 0, { o: uid });
+  // Деньги и долги — по всем книгам (в приложении тоже видно всё вместе). Категории — «Личное»: туда пишутся новые записи.
+  const cats = e.app.findRecordsByFilter("categories", "owner = {:o} && book != 'business'", "sort", 100, 0, { o: uid });
   const catName = {};
   for (const c of cats) catName[c.id] = c.getString("name");
   lines.push("Категории расходов: " + (cats.filter((c) => c.getString("kind") === "expense").map((c) => c.getString("name")).join(", ") || "нет"));
@@ -59,7 +60,7 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
   const someday = e.app.findRecordsByFilter("tasks", "owner = {:o} && done = false && day = ''", "created", 20, 0, { o: uid });
   if (someday.length) lines.push("Когда-нибудь: " + someday.map((t) => t.getString("title")).join("; "));
 
-  const planned = e.app.findRecordsByFilter("transactions", `owner = {:o} && status = 'planned' && ${bookF} && date <= {:b}`, "date", 30, 0,
+  const planned = e.app.findRecordsByFilter("transactions", "owner = {:o} && status = 'planned' && date <= {:b}", "date", 30, 0,
     { o: uid, b: addDays(today, 31) + " 23:59:59" });
   lines.push("Будущие платежи (дата, сумма, что):");
   for (const t of planned) {
@@ -69,7 +70,7 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
   if (!planned.length) lines.push("- нет");
 
   const monthStart = today.slice(0, 8) + "01";
-  const paid = e.app.findRecordsByFilter("transactions", `owner = {:o} && status = 'paid' && ${bookF} && date >= {:a} && date <= {:b}`, "-date", 2000, 0,
+  const paid = e.app.findRecordsByFilter("transactions", "owner = {:o} && status = 'paid' && date >= {:a} && date <= {:b}", "-date", 2000, 0,
     { o: uid, a: monthStart + " 00:00:00", b: today + " 23:59:59" });
   let inc = 0, exp = 0;
   const byCat = {};
@@ -78,7 +79,6 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
     if (k === "income") inc += a;
     else if (k === "expense") { exp += a; const n = catName[t.getString("category")] || "Без категории"; byCat[n] = (byCat[n] || 0) + a; }
   }
-  const r2 = (v) => Math.round(v * 100) / 100;
   lines.push(`Этот месяц по сегодня: доходы ${r2(inc)} zł, расходы ${r2(exp)} zł.`);
   const top = Object.keys(byCat).sort((x, y) => byCat[y] - byCat[x]).slice(0, 8);
   if (top.length) lines.push("Расходы по категориям: " + top.map((n) => `${n} ${r2(byCat[n])}`).join(", "));
@@ -88,10 +88,77 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
     for (const t of recent) lines.push(`- ${day10(t, "date")} ${t.getString("kind") === "income" ? "+" : "−"}${t.getFloat("amount")} zł — ${t.getString("note") || catName[t.getString("category")] || ""}`);
   }
 
+  // На руках сейчас (баланс считает база — view book_balances)
+  let cash = 0;
+  try { for (const b of e.app.findRecordsByFilter("book_balances", "owner = {:o}", "", 10, 0, { o: uid })) cash += b.getFloat("balance"); } catch (_) {}
+  cash = r2(cash);
+  lines.push(`Сейчас на руках: ${cash} zł.`);
+
+  // До следующего дохода: сколько платежей впереди и сколько остаётся на день
+  const nextInc = planned.find((t) => t.getString("kind") === "income" && day10(t, "date") >= today);
+  const horizon = nextInc ? day10(nextInc, "date") : addDays(today, 30);
+  let dueSum = 0;
+  for (const t of planned) if (t.getString("kind") === "expense" && day10(t, "date") < horizon) dueSum += t.getFloat("amount");
+  dueSum = r2(dueSum);
+  const daysLeft = Math.max(1, daysBetween(today, horizon));
+  lines.push(nextInc
+    ? `Ближайший записанный доход: ${horizon} (через ${daysLeft} дн.) +${nextInc.getFloat("amount")} zł — ${nextInc.getString("note") || catName[nextInc.getString("category")] || "доход"}.`
+    : "Ближайший доход в будущих платежах не записан (ниже — доходы прошлых месяцев, по ним видно, когда обычно приходят деньги). Расчёт ниже — на 30 дней.");
+  lines.push(`До ${horizon}: платежей (вместе с просроченными) ${dueSum} zł; после них останется ${r2(cash - dueSum)} zł, это ${r2((cash - dueSum) / daysLeft)} zł в день.`);
+
+  // Как обычно: 3 прошлых полных месяца
+  const histFrom = (() => { const d = new Date(monthStart + "T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() - 3); return d.toISOString().slice(0, 10); })();
+  const hist = e.app.findRecordsByFilter("transactions", "owner = {:o} && status = 'paid' && date >= {:a} && date < {:b}", "date", 5000, 0,
+    { o: uid, a: histFrom + " 00:00:00", b: monthStart + " 00:00:00" });
+  if (hist.length) {
+    const histDays = daysBetween(histFrom, monthStart);
+    let hExp = 0, hInc = 0, hDaily = 0;
+    const hCat = {}, incomes = [];
+    for (const t of hist) {
+      const a = t.getFloat("amount"), k = t.getString("kind");
+      if (k === "income") { hInc += a; incomes.push(t); }
+      else if (k === "expense") {
+        hExp += a;
+        const n = catName[t.getString("category")] || "Без категории";
+        hCat[n] = (hCat[n] || 0) + a;
+        // повседневные траты — без регулярных платежей и выплат долгов (они уже есть в будущих платежах)
+        const rep = t.getString("repeat");
+        if ((!rep || rep === "none") && !t.getString("debt")) hDaily += a;
+      }
+    }
+    lines.push(`Обычно (среднее за 3 прошлых месяца, с ${histFrom}): доходы ${r2(hInc / 3)} zł в месяц, расходы ${r2(hExp / 3)} zł в месяц; повседневные траты без регулярных платежей и долгов ≈ ${r2(hDaily / histDays)} zł в день.`);
+    const hTop = Object.keys(hCat).sort((x, y) => hCat[y] - hCat[x]).slice(0, 10);
+    lines.push("Расходы по категориям в среднем за месяц: " + hTop.map((n) => `${n} ${r2(hCat[n] / 3)}`).join(", "));
+    if (incomes.length) {
+      lines.push("Доходы прошлых месяцев:");
+      for (const t of incomes.slice(-15)) lines.push(`- ${day10(t, "date")} +${t.getFloat("amount")} zł — ${t.getString("note") || catName[t.getString("category")] || ""}`);
+    }
+  } else lines.push("Прошлых месяцев в записях нет — сравнивать «как обычно» пока не с чем.");
+
+  // Долги: сколько осталось (сумма долга минус оплаченные записи, привязанные к долгу)
+  const debts = e.app.findRecordsByFilter("debts", "owner = {:o} && closed = false", "created", 50, 0, { o: uid });
+  if (debts.length) {
+    const debtPays = e.app.findRecordsByFilter("transactions", "owner = {:o} && status = 'paid' && debt != ''", "", 5000, 0, { o: uid });
+    const paidBy = {};
+    for (const p of debtPays) paidBy[p.getString("debt")] = (paidBy[p.getString("debt")] || 0) + p.getFloat("amount");
+    for (const dir of ["owe", "lent"]) {
+      const list = debts.filter((d) => (d.getString("direction") === "lent" ? "lent" : "owe") === dir);
+      if (!list.length) continue;
+      lines.push(dir === "owe" ? "Мои долги (я должен): название — осталось из суммы, платёж в месяц, следующий платёж:" : "Мне должны: название — осталось получить из суммы, платёж в месяц, следующий:");
+      for (const d of list) {
+        const total = d.getFloat("total"), left = r2(Math.max(0, total - (paidBy[d.id] || 0))), m = d.getFloat("monthly_payment");
+        const due = d.getString("next_due").slice(0, 10);
+        lines.push(`- ${d.getString("name")} — ${left} из ${total} zł${m > 0 ? `, ${m} zł/мес (≈ ${Math.ceil(left / m)} мес. до конца)` : ", без графика"}${due ? `, след. ${due}` : ""}`);
+      }
+    }
+  } else lines.push("Открытых долгов нет.");
+
   const system = [
     "Ты — помощник в личном приложении для денег и дел. Отвечай по-русски, коротко и просто, без жаргона: 1–3 предложения.",
-    `Сегодня ${today} (${wd(today)})${now ? `, сейчас ${now}` : ""}. Валюта — zł. Книга: ${business ? "Бизнес" : "Личное"}.`,
-    "Ты можешь: отвечать на вопросы по данным ниже (дела, платежи, траты) и предлагать новые записи.",
+    `Сегодня ${today} (${wd(today)})${now ? `, сейчас ${now}` : ""}. Валюта — zł.`,
+    "Ты можешь: отвечать на вопросы по данным ниже (деньги на руках, дела, платежи, траты, долги, как обычно в прошлые месяцы) и предлагать новые записи.",
+    "На вопросы о деньгах («хватит ли до зарплаты», «сколько ушло на еду», «когда закрою долг, если платить по 500») отвечай конкретными цифрами из данных. Готовые расчёты в данных (сколько останется, в день) бери как есть, не пересчитывай. «Хватит ли» — сравни, сколько остаётся в день, с обычными повседневными тратами в день, и скажи прямо: хватит, впритык или не хватит, и на сколько. Если данных не хватает — так и скажи, чего не хватает, и не выдумывай.",
+    "Если просят разбить большое дело или цель на шаги («переезд в декабре», «подготовиться к отпуску») — предложи 3–8 дел (task) по порядку, с датами между сегодня и сроком; без срока — даты не ставь.",
     "Новые записи клади в actions — приложение покажет их человеку, и он сам нажмёт «Добавить». Сам ты ничего не записываешь, поэтому не пиши «добавил» — пиши, что предлагаешь.",
     "Виды записей: task — дело (не про деньги); expense — расход; income — доход.",
     "Для expense/income: paid=true, если деньги уже потрачены или получены («потратил», «купил», «пришла зарплата»), тогда date — день траты (обычно сегодня); paid=false — будущий платёж (оплатить, заплатить в пятницу).",
