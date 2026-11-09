@@ -5,7 +5,6 @@ import { state } from '../core/state.js';
 import { CFG, pb, uid, ownerFilter } from '../core/pb.js';
 import { mountPushBlock, forgetThisDevice } from './push.js';
 import { mountIngestBlock } from './ingest.js';
-import { mountTradingCodeBlock } from './trading.js';
 import { $view, toast, errText, openSheet, closeSheet, soundOn, setSound } from '../ui.js';
 import { getCats, getFields, getDebts } from '../core/data.js';
 import { render, goHome } from '../router.js';
@@ -59,7 +58,7 @@ export async function settingsScreen(route, alive) {
 
   mountPushBlock();
   mountMemoryBlock(alive);
-  mountIngestBlock().then(() => mountTradingCodeBlock());
+  mountIngestBlock();
   $view.querySelector('#addf').onclick = () => fieldSheet(null, fields.length);
   $view.querySelectorAll('[data-editf]').forEach((b) => b.onclick = () => fieldSheet(fields.find((x) => x.id === b.dataset.editf)));
   $view.querySelectorAll('[data-hide]').forEach((b) => b.onclick = async () => {
