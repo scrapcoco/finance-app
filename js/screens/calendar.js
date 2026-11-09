@@ -1,7 +1,6 @@
 // Календарь платежей
 import { money, MONTHS_GEN, WEEKDAYS, ymd, parseYmd, txDay, today, addMonths, daysIn } from '../core/util.js';
 import { state } from '../core/state.js';
-import { ICON } from '../core/icons.js';
 import { $view, monthSwitch, txRow, bindPay } from '../ui.js';
 import { txBetween } from '../core/data.js';
 import { render } from '../router.js';
@@ -50,8 +49,7 @@ export async function calendarScreen(route, alive) {
       <div class="cal-week"><div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div></div>
       <div class="cal-grid">${cells.join('')}</div>
     </div>
-    <section class="sec" id="cal-day">${dayHtml(state.selDay)}</section>
-    ${state.book === 'business' ? `<a class="someday-link cal-debts" href="#/debts">Долги и займы${ICON.right}</a>` : ''}`;
+    <section class="sec" id="cal-day">${dayHtml(state.selDay)}</section>`;
   $view.querySelector('.month-switch').querySelectorAll('[data-m]').forEach((b) => {
     b.onclick = () => { state.month = addMonths(state.month, Number(b.dataset.m)); render(); };
   });

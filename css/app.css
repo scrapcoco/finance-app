@@ -888,7 +888,6 @@ a { color: var(--soft); }
 .quiet-line b { color: var(--soft); font-weight: 700; margin-left: 2px; }
 .quiet-line b.inc { color: var(--inc); }
 .quiet-line b.exp { color: var(--exp); }
-@media (min-width: 960px) { .cal-debts { display: none; } }
 
 .week-nav { display: flex; align-items: center; gap: 0; margin-right: -10px; }
 .week-nav .link-btn { min-width: 112px; text-align: center; font-weight: 700; color: var(--muted); }
