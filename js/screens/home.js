@@ -146,7 +146,7 @@ export async function homeScreen(route, alive) {
   };
   const wk = weekStart(), rv = readReview();
   const review = isCur && rv?.week === wk && rv.text && !rv.hidden ? rv.text : '';
-  const reviewCard = () => `<div class="card nudge">
+  const reviewCard = () => `<div class="card nudge tone-lilac">
       <span class="nudge-ic inc">${ICON.spark}</span>
       <span class="main"><span class="nudge-k inc">Итоги недели</span><span class="review-text">${esc(review)}</span></span>
       <button type="button" class="icon-btn ghost" id="rv-x" aria-label="Скрыть итоги недели">${ICON.close}</button></div>`;

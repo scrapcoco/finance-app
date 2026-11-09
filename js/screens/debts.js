@@ -78,7 +78,7 @@ export async function debtsScreen(route, alive) {
       <div><div class="label">${T.left}</div>
         <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><div class="big">${money(leftAll)}</div><div class="note">из ${money(totalAll)}</div></div></div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <div class="meter inc" style="height:8px;background:rgba(255,255,255,0.08)"><i style="width:${pctAll}%"></i></div>
+        <div class="meter inc" style="height:8px;background:rgba(20,22,30,0.08)"><i style="width:${pctAll}%"></i></div>
         <div class="note" style="display:flex;justify-content:space-between;gap:8px"><span><b style="color:var(--ink)">${pctAll}%</b> ${T.done}</span><span>${forecast}</span></div>
       </div>
     </section>
@@ -86,7 +86,7 @@ export async function debtsScreen(route, alive) {
       <div class="sec-head"><h2>${T.chart}</h2>${drop > 0 ? `<span class="inc" style="font-size:12px;font-weight:700">−${money(drop)} за полгода</span>` : ''}</div>
       <div class="bars" role="img" aria-label="Остаток долга по месяцам">
         ${chart.map((c) => `<div class="bar-col ${c.cur ? 'cur' : ''}"><div class="val">${c.v ? k(c.v) : ''}</div><div class="bar-pair">
-          <div class="bar wide" style="height:${(c.v / cMax) * 100}%;background:${c.cur ? 'var(--inc)' : '#3A3A3F'}"></div></div>
+          <div class="bar wide" style="height:${(c.v / cMax) * 100}%;background:${c.cur ? 'var(--inc)' : '#D9DADF'}"></div></div>
           <div class="lbl">${c.label}</div></div>`).join('')}
       </div>
     </section>

@@ -9,7 +9,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 - `index.html` — оболочка: `#view`, `#tabbar`, `#sheet-root`, `#toast`; подключает `config.js`, SDK и `js/main.js` (ES-модуль)
 - `js/config.js` — `window.APP_CONFIG`: `PB_URL`, `CURRENCY`, `LOCALE`, `VAPID_PUBLIC_KEY`
 - `js/pocketbase.umd.js` — SDK PocketBase v0.28.1 (глобальный `PocketBase`), не трогать
-- `css/app.css` — стили, цвета в CSS-переменных (`--ink`, `--soft`, `--muted`, `--inc`, `--exp`, `--line`)
+- `css/app.css` — стили, цвета в CSS-переменных (`--ink`, `--soft`, `--muted`, `--inc`, `--exp`, `--line`). Светлая тема (ветка account-mode): серый фон без картинки, белые карточки, главное на цветных переливах `--tone-green/lilac/peach/pink` (баланс, итоги недели, просрочка, прибыль) — блок «Светлая тема» в конце файла
 - `sw.js` — кэш оболочки (network-first), push и клик по уведомлению
 - `manifest.webmanifest`, `icons/`, `netlify.toml`
 - `server/` — копия серверной части (напоминания, systemd, миграции PocketBase); Netlify её не использует
