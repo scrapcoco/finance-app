@@ -67,7 +67,7 @@ export async function homeScreen(route, alive) {
       filter: withBook(`${ownerFilter()} && status = 'planned' && ` + pb.filter('date < {:t}', { t: `${ymd(addDays(new Date(), 15))} 00:00:00` })),
       sort: 'date,created', expand: 'category'
     }) : [],
-    desk && state.book === 'business' ? projectStats(m) : null
+    state.book === 'business' ? projectStats(m) : null
   ]);
   if (!alive()) return;
   let inc = 0, exp = 0, plannedNet = 0;
@@ -168,12 +168,45 @@ export async function homeScreen(route, alive) {
       </div>
       ${note ? `<div class="note">${esc(note)}</div>` : ''}
     </section>`;
+  // Телефон, бизнес: «На счёте», выручка и прибыль с маржой (как плитки на ПК)
+  const biz = state.book === 'business';
+  const profit = inc - exp;
+  const heroBiz = `<section class="hero">
+      <div class="hero-top">
+        <a class="bal-btn" href="#/overview" aria-label="На счёте ${moneySigned(balance)}. Открыть обзор">
+          <span class="label"><span>На счёте</span><span class="ov-link" aria-hidden="true">Обзор${ICON.right}</span></span>
+          <span class="big">${moneySigned(balance)}</span></a>
+        <button type="button" class="icon-btn ghost cash-btn" id="cash" aria-label="Изменить остаток на счёте">${ICON.edit}</button>
+      </div>
+      <div class="pair">
+        <div><div class="k">Выручка</div><div class="v inc">+${money(inc)}</div>${delta(inc, prevInc, true)}</div>
+        <div><div class="k">Прибыль</div><div class="v">${moneySigned(profit)}</div>${inc > 0 ? `<span class="delta">маржа ${Math.round((profit / inc) * 100)}%</span>` : ''}</div>
+      </div>
+      ${note ? `<div class="note">${esc(note)}</div>` : ''}
+    </section>`;
+  // Тихие строки под главным: личное — куда ушло больше всего; бизнес — лучший проект и платежи недели
+  const quiet = [];
+  if (biz) {
+    const best = proj?.rows.filter((r) => !r.p.archived && (r.rev || r.exp)).sort((a, b) => b.profit - a.profit)[0];
+    if (best) quiet.push(`<a class="someday-link quiet-line" href="#/projects"><span>Лучший проект · ${esc(best.p.name)} <b class="${best.profit >= 0 ? 'inc' : 'exp'}">${moneySigned(best.profit)}</b></span>${ICON.right}</a>`);
+    if (isCur) {
+      let wIn = 0, wOut = 0;
+      for (const t of weekPay) { if (t.kind === 'income') wIn += t.amount; else if (t.kind === 'expense') wOut += t.amount; }
+      if (wIn || wOut) quiet.push(`<a class="someday-link quiet-line" href="#/calendar"><span>За неделю · придёт <b class="inc">+${money(wIn)}</b> · уйдёт <b>−${money(wOut)}</b></span>${ICON.right}</a>`);
+    }
+  } else {
+    const byCat = new Map();
+    for (const t of monthTx) if (t.status === 'paid' && t.kind === 'expense') { const n = t.expand?.category?.name || 'Без категории'; byCat.set(n, (byCat.get(n) || 0) + t.amount); }
+    const top = [...byCat].sort((a, b) => b[1] - a[1])[0];
+    if (top) quiet.push(`<a class="someday-link quiet-line" href="#/overview"><span>Больше всего ушло · ${esc(top[0])} <b>${money(top[1])}</b></span>${ICON.right}</a>`);
+  }
   // На ПК платежи и дела — в своих колонках, поэтому из «Не пропустить» остаются только предупреждение и итоги недели
   const alerts = isCur ? [...(shortage ? [shortCard(shortage)] : []), ...(review ? [reviewCard()] : [])].join('') : '';
   $view.innerHTML = desk
     ? head + deskHome({ book: state.book, m, isCur, balance, forecast: isCur && plannedNet ? `${moneySigned(balance + plannedNet)} к ${lastDay}` : '', inc, exp, prevInc, prevExp, delta, note, hero, alerts, monthTx, pay14, tasks: todayTasks.slice().sort(byTime), proj })
-    : `${head}${hero}
-    ${nudges || moreLink ? `<section class="sec nudges" aria-label="Не пропустить">${nudges}${moreLink}</section>` : ''}`;
+    : `${head}${biz ? heroBiz : hero}
+    ${nudges || moreLink ? `<section class="sec nudges" aria-label="Не пропустить">${nudges}${moreLink}</section>` : ''}
+    ${quiet.length ? `<section class="sec quiet-lines">${quiet.join('')}</section>` : ''}`;
   bindMonthSwitch();
   $view.querySelector('#asst').onclick = (e) => openAssistant(e.currentTarget);
   $view.querySelector('#cash')?.addEventListener('click', () => cashSheet(balance));

@@ -882,6 +882,13 @@ a { color: var(--soft); }
 }
 .someday-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 6px 2px; background: none; border: none; color: var(--soft); font: inherit; font-size: 13px; font-weight: 700; text-decoration: none; cursor: pointer; }
 .someday-link svg { width: 16px; height: 16px; }
+.quiet-lines { gap: 2px; }
+.quiet-line { font-weight: 600; color: var(--muted); }
+.quiet-line > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quiet-line b { color: var(--soft); font-weight: 700; margin-left: 2px; }
+.quiet-line b.inc { color: var(--inc); }
+.quiet-line b.exp { color: var(--exp); }
+@media (min-width: 960px) { .cal-debts { display: none; } }
 
 .week-nav { display: flex; align-items: center; gap: 0; margin-right: -10px; }
 .week-nav .link-btn { min-width: 112px; text-align: center; font-weight: 700; color: var(--muted); }

@@ -41,7 +41,10 @@ export function renderTabbar(active) {
   if ($tabbar.dataset.book !== state.book) $tabbar.innerHTML = '';
   if (!$tabbar.querySelector('.tab-glow')) {
     $tabbar.dataset.book = state.book;
-    const tabs = TABS.filter((t) => !t.biz || state.book !== 'personal');
+    // У бизнеса на телефоне вместо «Долгов» — «Проекты» (долги — в полоске на ПК и ссылкой с «Платежей»)
+    const tabs = state.book === 'business'
+      ? TABS.map((t) => (t.r === 'debts' ? { ...TABS.find((x) => x.r === 'projects'), desk: false } : t.r === 'projects' ? { ...TABS.find((x) => x.r === 'debts'), desk: true } : t))
+      : TABS.filter((t) => !t.biz || state.book !== 'personal');
     $tabbar.innerHTML = '<i class="tab-glow" aria-hidden="true"></i><div class="side-brand" title="Финансы"><img src="icons/icon.svg" alt="Финансы" width="40" height="40"></div>' + tabs.map((t) => t.add
       ? `<a class="tab-add" href="#/add" aria-label="${t.label}" data-label="${t.label} · N">${t.icon}<span class="side-label">${t.label}</span></a>`
       : `<a class="tab ${t.desk ? 'desk-only' : ''}" href="#/${t.r}" data-r="${t.r}" data-label="${t.label}" aria-label="${t.label}">${t.icon}<span>${t.label}</span></a>`
