@@ -15,6 +15,8 @@ import { overviewScreen } from './screens/overview.js';
 import { projectsScreen, projectScreen } from './screens/projects.js';
 import { recordsScreen } from './screens/records.js';
 import { tasksScreen } from './screens/tasks.js';
+import { modeScreen, modeSkipped } from './screens/mode.js';
+import { userMode } from './core/data.js';
 
 // desk: true — пункт только в боковой панели на ПК (на телефоне туда ведут ссылки с экранов)
 export const TABS = [
@@ -24,7 +26,7 @@ export const TABS = [
   { r: 'overview', label: 'Обзор', icon: ICON.pie, desk: true }, // на телефоне — нажатие на баланс на главной
   { r: 'calendar', label: 'Платежи', icon: ICON.cal },
   { r: 'debts', label: 'Долги', icon: ICON.debt },
-  { r: 'projects', label: 'Проекты', icon: ICON.case, desk: true },
+  { r: 'projects', label: 'Проекты', icon: ICON.case, desk: true, biz: true }, // biz — только в бизнес-виде (и пока вид не выбран)
   { r: 'records', label: 'Записи', icon: ICON.list, desk: true },
   { r: 'settings', label: 'Настройки', icon: ICON.gear, desk: true }
 ];
@@ -35,8 +37,12 @@ let glowFrom = null;
 // Меню собирается один раз; при переходах меняется только aria-current — элементы остаются те же,
 // поэтому и цвет иконок, и подсветка плывут плавно, даже если переключаться быстро посреди анимации.
 export function renderTabbar(active) {
+  // Вид аккаунта сменился (Настройки) — пункты меню другие, собираем заново
+  if ($tabbar.dataset.book !== state.book) $tabbar.innerHTML = '';
   if (!$tabbar.querySelector('.tab-glow')) {
-    $tabbar.innerHTML = '<i class="tab-glow" aria-hidden="true"></i><div class="side-brand" title="Финансы"><img src="icons/icon.svg" alt="Финансы" width="40" height="40"></div>' + TABS.map((t) => t.add
+    $tabbar.dataset.book = state.book;
+    const tabs = TABS.filter((t) => !t.biz || state.book !== 'personal');
+    $tabbar.innerHTML = '<i class="tab-glow" aria-hidden="true"></i><div class="side-brand" title="Финансы"><img src="icons/icon.svg" alt="Финансы" width="40" height="40"></div>' + tabs.map((t) => t.add
       ? `<a class="tab-add" href="#/add" aria-label="${t.label}" data-label="${t.label} · N">${t.icon}<span class="side-label">${t.label}</span></a>`
       : `<a class="tab ${t.desk ? 'desk-only' : ''}" href="#/${t.r}" data-r="${t.r}" data-label="${t.label}" aria-label="${t.label}">${t.icon}<span>${t.label}</span></a>`
     ).join('');
@@ -108,7 +114,17 @@ export async function render() {
     $view.dataset.screen = 'login'; $view.classList.remove('view-enter');
     return viewLogin();
   }
+  // Вид аккаунта («для себя / для бизнеса») = книга. Не выбран — сначала окно выбора (у старых аккаунтов — один раз)
+  const mode = userMode();
+  state.book = mode || 'all';
+  if (!mode && !modeSkipped()) {
+    $tabbar.hidden = true; $tabbar.innerHTML = ''; glowFrom = null; shownScreen = null;
+    $view.dataset.screen = 'mode'; $view.classList.add('no-tabs');
+    return modeScreen();
+  }
   const route = parseRoute();
+  // Проекты — только у бизнеса
+  if (state.book === 'personal' && (route.name === 'projects' || route.name === 'project')) { location.replace('#/'); return; }
   // «Отчёты» теперь часть «Обзора»: старые ссылки и закладки ведут туда (replace — без лишнего шага «назад»)
   if (route.name === 'reports') { location.replace('#/overview'); return; }
   // На ПК вместо «Истории» — таблица «Записи», на телефоне наоборот (таблица на узком экране не помещается)

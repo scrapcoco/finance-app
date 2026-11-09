@@ -8,8 +8,7 @@ export const state = {
   repDay: null,
   repWeek: null,
   histKind: 'all',
-  // Книга: переключателя нет — видно всё (Личное и Бизнес вместе), новые записи — в «Личное».
-  // Позже выбор «для себя / для бизнеса» будет при регистрации
+  // Книга = вид аккаунта (users.mode, ставит render): 'personal' | 'business'; 'all' — вид ещё не выбран (видно всё, новые — в «Личное»)
   book: 'all',
   histQuery: '',
   ovKind: 'expense',

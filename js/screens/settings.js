@@ -6,7 +6,8 @@ import { CFG, pb, uid, ownerFilter } from '../core/pb.js';
 import { mountPushBlock, forgetThisDevice } from './push.js';
 import { mountIngestBlock } from './ingest.js';
 import { $view, toast, errText, openSheet, closeSheet, soundOn, setSound } from '../ui.js';
-import { getCats, getFields, getDebts } from '../core/data.js';
+import { getCats, getFields, getDebts, MODES, userMode, setMode } from '../core/data.js';
+import { MODE_TEXT } from './mode.js';
 import { render, goHome } from '../router.js';
 import { COPYRIGHT, termsSheet } from './login.js';
 import { newCategorySheet } from './form.js';
@@ -42,6 +43,12 @@ export async function settingsScreen(route, alive) {
     </section>
     <section class="sec"><div class="sec-head"><h2>Категории</h2></div>${catBlock('expense', 'Расходы')}${catBlock('income', 'Доходы')}</section>
     <section class="sec" id="memo-sec" hidden></section>
+    ${userMode() ? `<section class="sec">
+      <div class="sec-head"><h2>Вид приложения</h2></div>
+      <div class="segment" role="group" aria-label="Вид приложения">${Object.entries(MODES).map(([k, v]) =>
+        `<button type="button" data-setmode="${k}" aria-pressed="${k === userMode()}">${esc(v)}</button>`).join('')}</div>
+      <p class="hint" style="margin:0;color:var(--muted);font-size:13px">${esc(MODE_TEXT[userMode()])} Записи другого вида не удаляются — они просто скрыты, пока вид не сменишь обратно.</p>
+    </section>` : ''}
     <section class="sec">
       <div class="sec-head"><h2>Интерфейс</h2></div>
       <div class="form-list"><div class="frow"><label id="snd-l">Звук нажатий</label><button type="button" class="switch" id="snd" role="switch" aria-labelledby="snd-l" aria-checked="${soundOn()}"></button></div></div>
@@ -58,7 +65,15 @@ export async function settingsScreen(route, alive) {
 
   mountPushBlock();
   mountMemoryBlock(alive);
-  mountIngestBlock();
+  if (state.book !== 'business') mountIngestBlock(); // Apple Pay — только для себя
+  $view.querySelectorAll('[data-setmode]').forEach((b) => b.onclick = async () => {
+    const m = b.dataset.setmode;
+    if (m === userMode()) return;
+    if (!confirm(`Переключить на «${MODES[m]}»? Записи другого вида останутся, но будут скрыты.`)) return;
+    $view.querySelectorAll('[data-setmode]').forEach((x) => { x.disabled = true; });
+    try { await setMode(m); toast(`Вид: ${MODES[m]}`); render(); }
+    catch (e) { toast(errText(e)); $view.querySelectorAll('[data-setmode]').forEach((x) => { x.disabled = false; }); }
+  });
   $view.querySelector('#addf').onclick = () => fieldSheet(null, fields.length);
   $view.querySelectorAll('[data-editf]').forEach((b) => b.onclick = () => fieldSheet(fields.find((x) => x.id === b.dataset.editf)));
   $view.querySelectorAll('[data-hide]').forEach((b) => b.onclick = async () => {

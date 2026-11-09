@@ -1,5 +1,6 @@
 /// <reference path="../pb_data/types.d.ts" />
-// Разбор недели (ИИ, Claude Haiku): POST /api/finance/review, тело { today: "ГГГГ-ММ-ДД" } → { week, text }.
+// Разбор недели (ИИ, Claude Haiku): POST /api/finance/review, тело { today: "ГГГГ-ММ-ДД", book?: "personal"|"business" } → { week, text }.
+// book — вид аккаунта: разбирается только его книга (без book — все); у бизнеса своя строка в assistant_reviews (week + "b").
 // Один раз в неделю на пользователя: результат хранится в assistant_reviews (owner + понедельник текущей недели),
 // повторные запросы той же недели отдают сохранённое и ИИ не вызывают. Пустой text — «ничего заметного», карточки нет.
 // Смотрит прошлую неделю (пн–вс) против обычного (до 13 недель до неё) и платежи этой недели. Лимит 30 вопросов не тратит.
@@ -13,18 +14,21 @@ routerAdd("POST", "/api/finance/review", (e) => {
   const addDays = (s, n) => { const d = new Date(s + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
   const dow = (new Date(today + "T12:00:00Z").getUTCDay() + 6) % 7; // 0 = понедельник
   const week = addDays(today, -dow);
+  const book = body.book === "business" || body.book === "personal" ? body.book : "";
+  const BF = book === "business" ? " && book = 'business'" : book === "personal" ? " && book != 'business'" : "";
+  const wkey = book === "business" ? week + "b" : week; // ключ в assistant_reviews: у бизнеса отдельный разбор
   const r2 = (v) => Math.round(v * 100) / 100;
   const day10 = (r, f) => r.getString(f).slice(0, 10);
 
   try {
-    const have = e.app.findFirstRecordByFilter("assistant_reviews", "owner = {:o} && week = {:w}", { o: uid, w: week });
+    const have = e.app.findFirstRecordByFilter("assistant_reviews", "owner = {:o} && week = {:w}", { o: uid, w: wkey });
     return e.json(200, { week, text: have.getString("text") });
   } catch (_) {}
 
   const save = (text, u) => {
     try {
       const r = new Record(e.app.findCollectionByNameOrId("assistant_reviews"));
-      r.set("owner", uid); r.set("week", week); r.set("text", text);
+      r.set("owner", uid); r.set("week", wkey); r.set("text", text);
       r.set("tokens_in", (u && u.input_tokens) || 0); r.set("tokens_out", (u && u.output_tokens) || 0);
       e.app.save(r);
     } catch (_) { /* второй запрос той же недели успел раньше — не страшно */ }
@@ -36,7 +40,7 @@ routerAdd("POST", "/api/finance/review", (e) => {
   const cats = e.app.findRecordsByFilter("categories", "owner = {:o}", "", 200, 0, { o: uid });
   const catName = {};
   for (const c of cats) catName[c.id] = c.getString("name");
-  const tx = e.app.findRecordsByFilter("transactions", "owner = {:o} && status = 'paid' && date >= {:a} && date < {:b}", "date", 10000, 0,
+  const tx = e.app.findRecordsByFilter("transactions", "owner = {:o}" + BF + " && status = 'paid' && date >= {:a} && date < {:b}", "date", 10000, 0,
     { o: uid, a: histFrom + " 00:00:00", b: week + " 00:00:00" });
   const last = { inc: 0, exp: 0, cat: {}, n: 0 }, usual = { exp: 0, cat: {} };
   const big = [];
@@ -64,9 +68,10 @@ routerAdd("POST", "/api/finance/review", (e) => {
   names.sort((x, y) => (last.cat[y] || 0) - (last.cat[x] || 0));
   for (const n of names.slice(0, 12)) lines.push(`- ${n}: ${r2(last.cat[n] || 0)} / ${weeks ? r2((usual.cat[n] || 0) / weeks) : "—"}`);
   big.sort((x, y) => y[0] - x[0]);
+  if (book === "business") lines.unshift("Это бизнес: доходы и расходы бизнеса.");
   if (big.length) lines.push("Крупные траты недели: " + big.slice(0, 3).map((b) => `${b[1]} ${r2(b[0])} zł`).join(", "));
 
-  const planned = e.app.findRecordsByFilter("transactions", "owner = {:o} && status = 'planned' && date < {:b}", "date", 30, 0,
+  const planned = e.app.findRecordsByFilter("transactions", "owner = {:o}" + BF + " && status = 'planned' && date < {:b}", "date", 30, 0,
     { o: uid, b: addDays(week, 7) + " 00:00:00" });
   if (planned.length) {
     lines.push("Платежи на этой неделе (и просроченные):");

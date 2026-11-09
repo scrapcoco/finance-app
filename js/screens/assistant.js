@@ -5,6 +5,7 @@
 import { esc, money, parseYmd, pbDate, today, MONTHS_SHORT, WEEKDAYS, dayOf } from '../core/util.js';
 import { ICON } from '../core/icons.js';
 import { pb, uid } from '../core/pb.js';
+import { state } from '../core/state.js';
 import { $sheetRoot, errText } from '../ui.js';
 import { getCats, curBook } from '../core/data.js';
 import { newTask } from '../core/tasks.js';
@@ -244,6 +245,7 @@ async function ask(box, text, pic) {
       body: {
         messages: chat.msgs.filter((m) => !m.error).map((m) => ({ role: m.role, text: m.img ? `[фото] ${m.text}` : m.role === 'assistant' && m.actions?.length ? `${m.text} [предложено: ${m.actions.map((a) => a.title).join(', ')}${m.added ? '; добавлено' : ''}]` : m.text })),
         today: today(), now: `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`,
+        book: state.book, // вид аккаунта: помощник смотрит только его записи ('all' — все)
         ...(pic ? { image: pic.data } : {})
       }
     });

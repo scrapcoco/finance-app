@@ -25,7 +25,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `core/util.js` | `esc`, деньги (`money`, `signed`, `parseAmount`), даты (`ymd`, `parseYmd`, `pbDate`, `nextOccurrence`), месяцы, подписи |
 | `core/icons.js` | `ICON` — inline SVG |
 | `core/state.js` | `state`: выбранный месяц/день/период/фильтры + `state.cache` справочников |
-| `core/data.js` | книги (`BOOKS`, `curBook`, `bookOf`, `bookFilter`, `withBook`), `getCats/getFields/getDebts/getProjects` (кэш), `txBetween`, `ensureDefaults(book)`, `markPaid`, `bumpDebtDue`, `getBalance` |
+| `core/data.js` | вид аккаунта (`MODES`, `userMode`, `isBusiness`, `setMode` — сохраняет `users.mode` и создаёт стартовые категории), книги (`BOOKS`, `curBook`, `bookOf`, `bookFilter`, `withBook`), `getCats/getFields/getDebts/getProjects` (кэш), `txBetween`, `ensureDefaults(book)`, `markPaid`, `bumpDebtDue`, `getBalance` |
 | `screens/login.js` | вход, регистрация по инвайт-коду, `termsSheet`, `COPYRIGHT` |
 | `core/tasks.js` | дела: `TASK_REPEAT`, `TASK_REMIND`, `taskDay`, `byTime`, `tasksBetween`, `overdueTasks`, `somedayTasks`, `nextTaskDay`, `newTask`, `completeTask` (у повторяющегося создаёт следующее, возвращает «Отменить»), `timeLeft`, `isMissingCollection` |
 | `screens/home.js` | `homeScreen`: баланс (нажатие → «Обзор», карандаш → `cashSheet`) и «Не пропустить» — платежи по завтра включительно и до двух ближайших дел со временем, остальное ссылкой; если срочного нет — под балансом пусто. Списков записей на главной нет. Карточки: «Не хватит N zł к дате» (платежи 7 дней > денег на руках, без ИИ) и «Итоги недели» (`POST /api/finance/review` раз в неделю, кэш в localStorage `asstReview`, ✕ скрывает) |
@@ -38,6 +38,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 | `screens/debts.js` | `debtsScreen`, `debtSheet` — прогресс и прогноз погашения |
 | `screens/records.js` | `recordsScreen` — «Записи» на ПК (вместо «Истории»; на телефоне `#/records` ↔ `#/history` переадресуются): таблица месяца, поиск/фильтры/сортировка в `state.rec`, тихая строка быстрого добавления (Enter), панель правки справа, действия над выбранными (категория, проект, «Оплачено», удалить), Esc закрывает панель/снимает выбор. Правило вида: важное на виду, редкое — тихо или по требованию |
 | `screens/projects.js` | `projectsScreen` (проекты книги «Бизнес» по прибыли: рост к прошлому месяцу, маржа, линия за полгода), `projectScreen` (карточка: цифры месяца, год столбиками, кольцо расходов, записи), `projectSheet`. Пункт меню только на ПК, на телефоне — ссылка внизу «Обзора» |
+| `screens/mode.js` | `modeScreen` — окно «Как будешь пользоваться?» (две карточки), `MODE_TEXT` — что входит в каждый вид (и для регистрации, и для Настроек), `modeSkipped` |
 | `screens/settings.js` | `settingsScreen`, `fieldSheet`, `deleteAccountSheet`, блок «Помощник помнит» (`assistant_memory`, удалить = забыть) |
 | `screens/push.js` | `mountPushBlock` — блок push-напоминаний в настройках |
 | `screens/ingest.js` | `mountIngestBlock` — ключ для записи расходов с iPhone (Apple Pay → Быстрая команда) |
@@ -54,7 +55,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 
 Маршруты — hash: `#/`, `#/add?kind=&date=&debt=&project=&back=`, `#/edit/<id>`, `#/calendar`, `#/history` (на ПК → `#/records`), `#/overview` (`#/reports` — то же; на телефоне в меню нет — открывается нажатием на баланс), `#/tasks`, `#/debts`, `#/projects`, `#/project/<id>`, `#/settings`.
 
-Книги: переключателя нет (убран 2026-11-08) — `state.book` всегда `all`: видно всё вместе, новые записи — в «Личное», выбора книги в форме нет. Позже книгу выберут при регистрации («для себя / для бизнеса»). У записей, категорий и долгов поле `book` personal|business, пусто = «Личное». Запросы списков — через `withBook()`.
+Вид аккаунта = книга: `users.mode` personal («Для себя») | business («Для бизнеса»), выбирается при регистрации; у старых аккаунтов (поле пустое) `render` один раз показывает окно выбора (`screens/mode.js`), сменить — в Настройках («Вид приложения»), данные другой книги не удаляются, а скрываются. `render` ставит `state.book = userMode() || 'all'` ('all' — вид не выбран или сервер без поля: всё вместе, как раньше). Личный вид: без «Проектов» (пункт меню `biz: true` скрыт, `#/projects` → `#/`). Бизнес: без Apple Pay (блок ingest в Настройках скрыт). Помощник и «Итоги недели» получают `book` и смотрят только его записи; дела и «Помощник помнит» общие. У записей, категорий и долгов поле `book` personal|business, пусто = «Личное». Запросы списков — через `withBook()`.
 
 ## Данные (коллекции PocketBase)
 
@@ -76,7 +77,7 @@ Vanilla HTML/CSS/JS, **без сборки и без npm**. Бэкенд — Poc
 - `book_balances` (view): строка на книгу (`owner`, `book`, `balance`); `getBalance()` читает её, в режиме «Всё» складывает
 - `balances` (view, только чтение, для старой версии сайта): `id` = id пользователя, `balance` — сумма оплаченных; клиент читает через `getBalance()`
   в `core/data.js` (при 404 — старый подсчёт по всем записям)
-- `users`: + `invite`, `terms_version`, `ingest_key_hash` (скрытое, sha256 ключа для iPhone)
+- `users`: + `invite`, `terms_version`, `mode` (personal|business, `server/1793800000_users_mode.js`), `ingest_key_hash` (скрытое, sha256 ключа для iPhone)
 
 `adjust` меняет баланс, но не попадает в доходы, расходы и отчёты. Сумма платежа по долгу считается
 из оплаченных `transactions` с этим `debt`: «я должен» гасится расходами, «мне должны» — доходами (`debtKind` в `core/data.js`). Рассылка push — `server/remind.py` (systemd-таймер, 9:00); см. `server/README.md`.

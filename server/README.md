@@ -17,6 +17,7 @@ Netlify эту папку не отдаёт (правило в `netlify.toml`), 
 | `pb_hooks/finance_ingest.pb.js` | `/opt/pocketbase/pb_hooks/` — ключ и приём расходов с iPhone |
 | `1793300000_trading.js` | история: торговый бот (убран 2026-11-09, коллекции удаляет `1793700000_remove_trading.js`) |
 | `1793700000_remove_trading.js` | `/opt/pocketbase/pb_migrations/` — удаляет коллекции торгового бота |
+| `1793800000_users_mode.js` | `/opt/pocketbase/pb_migrations/` — поле `users.mode` (вид аккаунта «Для себя / Для бизнеса»), `assistant_reviews.week` до 12 знаков |
 | `1793400000_tasks.js` | `/opt/pocketbase/pb_migrations/` — «Дела»: коллекция `tasks` |
 | `1793500000_assistant_usage.js` | `/opt/pocketbase/pb_migrations/` — помощник: счётчик вопросов за день |
 | `pb_hooks/finance_assistant.pb.js` | `/opt/pocketbase/pb_hooks/` — помощник (ИИ): `POST /api/finance/assistant`; ключ Anthropic — файл `/opt/pocketbase/secrets/anthropic_key` (pocketbase, 600), в репозиторий не кладём |

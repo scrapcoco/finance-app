@@ -17,18 +17,20 @@ const plural = (n, one, few, many) => {
 };
 
 // Итоги недели: ответ сервера хранится в localStorage на неделю, чтобы не спрашивать ИИ при каждом открытии главной
-const REVIEW = 'asstReview';
-const readReview = () => { try { return JSON.parse(localStorage.getItem(REVIEW) || 'null'); } catch (e) { return null; } };
-const writeReview = (v) => { try { localStorage.setItem(REVIEW, JSON.stringify(v)); } catch (e) { /* приватный режим */ } };
+// Разбор свой у каждого вида: у бизнеса — отдельный ключ (у личного — прежний, чтобы не запрашивать заново)
+const REVIEW = () => (state.book === 'business' ? 'asstReviewBiz' : 'asstReview');
+const readReview = () => { try { return JSON.parse(localStorage.getItem(REVIEW()) || 'null'); } catch (e) { return null; } };
+const writeReview = (v, key = REVIEW()) => { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* приватный режим */ } };
 const asstOn = () => { try { return localStorage.getItem('asstConsent') === '1'; } catch (e) { return false; } };
 const weekStart = () => { const d = new Date(); return ymd(addDays(d, -((d.getDay() + 6) % 7))); };
 
 function loadReview(alive) {
   const wk = weekStart(), rv = readReview();
   if (!asstOn() || (rv && rv.week === wk && !(rv.retryAt && Date.now() > rv.retryAt))) return;
+  const key = REVIEW();
   writeReview({ week: wk, text: '', retryAt: Date.now() + 6 * 3600 * 1000 }); // пока ждём и если сервер ответит ошибкой — повтор через 6 ч
-  pb.send('/api/finance/review', { method: 'POST', body: { today: today() } })
-    .then((r) => { writeReview({ week: wk, text: r.text || '' }); if (r.text && alive()) render(); })
+  pb.send('/api/finance/review', { method: 'POST', body: { today: today(), book: state.book } })
+    .then((r) => { writeReview({ week: wk, text: r.text || '' }, key); if (r.text && alive()) render(); })
     .catch(() => {});
 }
 

@@ -1,7 +1,8 @@
 /// <reference path="../pb_data/types.d.ts" />
 // Помощник (ИИ, Claude Haiku). POST /api/finance/assistant, тело:
 //   { messages: [{role: "user"|"assistant", text}], today: "ГГГГ-ММ-ДД", now: "ЧЧ:ММ", image?: "<base64 JPEG>" }
-//   (book больше не нужен: данные — по всем книгам; image — фото чека/счёта к последнему сообщению, не хранится)
+//   book?: "personal"|"business" — вид аккаунта: деньги и долги только этой книги (без book — все книги); дела и «помнит» — общие
+//   image — фото чека/счёта к последнему сообщению, не хранится
 // Действия: task | expense | income | remember (запомнить факт — пишет приложение в assistant_memory).
 // Ответ: { reply, actions: [...], left } — действия только предлагаются: записывает их приложение после «Добавить».
 // Ключ Anthropic лежит только на сервере: /opt/pocketbase/secrets/anthropic_key (владелец pocketbase, права 600).
@@ -16,6 +17,9 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
   const isYmd = (s) => /^\d{4}-\d\d-\d\d$/.test(String(s || ""));
   const today = isYmd(body.today) ? String(body.today) : new Date().toISOString().slice(0, 10);
   const now = /^\d\d:\d\d$/.test(String(body.now || "")) ? String(body.now) : "";
+  const book = body.book === "business" || body.book === "personal" ? body.book : "";
+  // Добавка к фильтрам записей и долгов: только книга вида аккаунта (у старых записей book пустой — это «Личное»)
+  const BF = book === "business" ? " && book = 'business'" : book === "personal" ? " && book != 'business'" : "";
 
   // История разговора: последние 8 сообщений, каждое не длиннее 800 знаков, последнее — от пользователя
   const msgs = (Array.isArray(body.messages) ? body.messages : []).slice(-8)
@@ -57,8 +61,9 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
   const r2 = (v) => Math.round(v * 100) / 100;
   const lines = [];
 
-  // Деньги и долги — по всем книгам (в приложении тоже видно всё вместе). Категории — «Личное»: туда пишутся новые записи.
-  const cats = e.app.findRecordsByFilter("categories", "owner = {:o} && book != 'business'", "sort", 100, 0, { o: uid });
+  // Деньги и долги — книги вида аккаунта (вид не выбран — все книги). Категории — той книги, куда пишутся новые записи.
+  if (book === "business") lines.push("Это бизнес-аккаунт: записи — доходы и расходы бизнеса.");
+  const cats = e.app.findRecordsByFilter("categories", "owner = {:o} && " + (book === "business" ? "book = 'business'" : "book != 'business'"), "sort", 100, 0, { o: uid });
   const catName = {};
   for (const c of cats) catName[c.id] = c.getString("name");
   lines.push("Категории расходов: " + (cats.filter((c) => c.getString("kind") === "expense").map((c) => c.getString("name")).join(", ") || "нет"));
@@ -72,7 +77,7 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
   const someday = e.app.findRecordsByFilter("tasks", "owner = {:o} && done = false && day = ''", "created", 20, 0, { o: uid });
   if (someday.length) lines.push("Когда-нибудь: " + someday.map((t) => t.getString("title")).join("; "));
 
-  const planned = e.app.findRecordsByFilter("transactions", "owner = {:o} && status = 'planned' && date <= {:b}", "date", 30, 0,
+  const planned = e.app.findRecordsByFilter("transactions", "owner = {:o}" + BF + " && status = 'planned' && date <= {:b}", "date", 30, 0,
     { o: uid, b: addDays(today, 31) + " 23:59:59" });
   lines.push("Будущие платежи (дата, сумма, что):");
   for (const t of planned) {
@@ -82,7 +87,7 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
   if (!planned.length) lines.push("- нет");
 
   const monthStart = today.slice(0, 8) + "01";
-  const paid = e.app.findRecordsByFilter("transactions", "owner = {:o} && status = 'paid' && date >= {:a} && date <= {:b}", "-date", 2000, 0,
+  const paid = e.app.findRecordsByFilter("transactions", "owner = {:o}" + BF + " && status = 'paid' && date >= {:a} && date <= {:b}", "-date", 2000, 0,
     { o: uid, a: monthStart + " 00:00:00", b: today + " 23:59:59" });
   let inc = 0, exp = 0;
   const byCat = {};
@@ -102,7 +107,7 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
 
   // На руках сейчас (баланс считает база — view book_balances)
   let cash = 0;
-  try { for (const b of e.app.findRecordsByFilter("book_balances", "owner = {:o}", "", 10, 0, { o: uid })) cash += b.getFloat("balance"); } catch (_) {}
+  try { for (const b of e.app.findRecordsByFilter("book_balances", "owner = {:o}", "", 10, 0, { o: uid })) if (!book || b.getString("book") === book) cash += b.getFloat("balance"); } catch (_) {}
   cash = r2(cash);
   lines.push(`Сейчас на руках: ${cash} zł.`);
 
@@ -120,7 +125,7 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
 
   // Как обычно: 3 прошлых полных месяца
   const histFrom = (() => { const d = new Date(monthStart + "T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() - 3); return d.toISOString().slice(0, 10); })();
-  const hist = e.app.findRecordsByFilter("transactions", "owner = {:o} && status = 'paid' && date >= {:a} && date < {:b}", "date", 5000, 0,
+  const hist = e.app.findRecordsByFilter("transactions", "owner = {:o}" + BF + " && status = 'paid' && date >= {:a} && date < {:b}", "date", 5000, 0,
     { o: uid, a: histFrom + " 00:00:00", b: monthStart + " 00:00:00" });
   if (hist.length) {
     const histDays = daysBetween(histFrom, monthStart);
@@ -182,9 +187,9 @@ routerAdd("POST", "/api/finance/assistant", (e) => {
   }
 
   // Долги: сколько осталось (сумма долга минус оплаченные записи, привязанные к долгу)
-  const debts = e.app.findRecordsByFilter("debts", "owner = {:o} && closed = false", "created", 50, 0, { o: uid });
+  const debts = e.app.findRecordsByFilter("debts", "owner = {:o}" + BF + " && closed = false", "created", 50, 0, { o: uid });
   if (debts.length) {
-    const debtPays = e.app.findRecordsByFilter("transactions", "owner = {:o} && status = 'paid' && debt != ''", "", 5000, 0, { o: uid });
+    const debtPays = e.app.findRecordsByFilter("transactions", "owner = {:o}" + BF + " && status = 'paid' && debt != ''", "", 5000, 0, { o: uid });
     const paidBy = {};
     for (const p of debtPays) paidBy[p.getString("debt")] = (paidBy[p.getString("debt")] || 0) + p.getFloat("amount");
     for (const dir of ["owe", "lent"]) {

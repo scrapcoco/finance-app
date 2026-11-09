@@ -5,6 +5,22 @@ import { state } from './state.js';
 import { pb, uid, ownerFilter } from './pb.js';
 import { toast } from '../ui.js';
 
+// ===== Вид приложения (users.mode): «Для себя» / «Для бизнеса». Выбирается при регистрации, у старых аккаунтов —
+// окном при первом входе; сменить можно в Настройках. Вид = книга: личный видит только «Личное», бизнес — только «Бизнес».
+// Данные другой книги не удаляются, просто скрыты. Пока вида нет (или сервер ещё без поля) — state.book = 'all', как раньше
+export const MODES = { personal: 'Для себя', business: 'Для бизнеса' };
+export const userMode = () => { const m = pb.authStore.record?.mode; return m === 'personal' || m === 'business' ? m : ''; };
+export const isBusiness = () => state.book === 'business';
+// Сохранить вид: поле users.mode, стартовые категории книги, сброс кэша. Ошибка — исключением (покажет вызывающий)
+export async function setMode(mode) {
+  const rec = await pb.collection('users').update(uid(), { mode });
+  if (rec.mode !== mode) throw new Error('Сервер ещё не обновлён — выбор вида пока недоступен.');
+  pb.authStore.save(pb.authStore.token, rec);
+  state.book = mode;
+  state.cache = { cats: null, fields: null, debts: null, projects: null };
+  await ensureDefaults(mode);
+}
+
 // ===== Книги: «Личное» / «Бизнес». У старых записей поле book пустое — это «Личное» =====
 export const BOOKS = { personal: 'Личное', business: 'Бизнес', all: 'Всё' };
 // Книга для новых записей (в режиме «Всё» — «Личное»)

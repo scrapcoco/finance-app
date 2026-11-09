@@ -3,7 +3,8 @@ import { esc } from '../core/util.js';
 import { state } from '../core/state.js';
 import { pb } from '../core/pb.js';
 import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
-import { ensureDefaults } from '../core/data.js';
+import { ensureDefaults, userMode, MODES } from '../core/data.js';
+import { MODE_TEXT } from './mode.js';
 import { goHome } from '../router.js';
 
 const TERMS_VERSION = '1';
@@ -57,6 +58,9 @@ export function viewLogin(mode = 'login') {
           <label class="afield"><span class="sr">Пароль ещё раз</span><input name="pw2" type="password" autocomplete="new-password" placeholder="Пароль ещё раз" required></label>
           <label class="afield"><span class="sr">Код приглашения</span><input name="inv" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Код приглашения" required></label>
         </div>
+        <div class="segment reg-mode" role="group" aria-label="Для чего аккаунт">${Object.entries(MODES).map(([k, v]) =>
+          `<button type="button" data-regmode="${k}" aria-pressed="${k === 'personal'}">${esc(v)}</button>`).join('')}</div>
+        <p class="reg-mode-hint" aria-live="polite">${esc(MODE_TEXT.personal)}</p>
         <label class="check"><input type="checkbox" name="agree"><span>Я прочитал и согласен с <button type="button" class="link-btn inline" data-terms>условиями тестирования</button></span></label>
         <div class="error" role="alert"></div>
         ${slideHTML('Создать аккаунт', 'Создаём…')}
@@ -80,11 +84,19 @@ export function viewLogin(mode = 'login') {
   setMode(box.dataset.mode);
   box.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => setMode(b.dataset.go, true); });
   fReg.querySelector('[data-terms]').onclick = termsSheet;
+  // Вид аккаунта при регистрации: «Для себя» по умолчанию, подсказка ниже говорит, что в него входит
+  let regMode = 'personal';
+  fReg.querySelectorAll('[data-regmode]').forEach((b) => b.onclick = () => {
+    regMode = b.dataset.regmode;
+    fReg.querySelectorAll('[data-regmode]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    fReg.querySelector('.reg-mode-hint').textContent = MODE_TEXT[regMode];
+  });
 
   const enter = async (email, password) => {
     await pb.collection('users').authWithPassword(email, password);
     state.cache = { cats: null, fields: null, debts: null };
-    await ensureDefaults();
+    // Стартовые категории — для книги своего вида; вид не выбран (старый аккаунт) — их создаст окно выбора
+    if (userMode()) await ensureDefaults(userMode());
     goHome();
   };
 
@@ -117,7 +129,7 @@ export function viewLogin(mode = 'login') {
         try {
           await pb.collection('users').create({
             email, password, passwordConfirm: password,
-            invite: form.inv.value.trim(), terms_version: TERMS_VERSION
+            invite: form.inv.value.trim(), terms_version: TERMS_VERSION, mode: regMode
           });
         } catch (ex) {
           const d = ex.response?.data || {};
