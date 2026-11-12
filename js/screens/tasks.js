@@ -3,8 +3,8 @@ import { esc, ymd, parseYmd, pbDate, today, addDays, MONTHS_GEN, MONTHS_SHORT, W
 import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { pb } from '../core/pb.js';
-import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
-import { TASK_REPEAT, TASK_REMIND, taskDay, byTime, tasksBetween, overdueTasks, somedayTasks, newTask, completeTask, uncompleteTask, isMissingCollection } from '../core/tasks.js';
+import { $view, toast, errText, openSheet, closeSheet, celebrate } from '../ui.js';
+import { TASK_REPEAT, TASK_REMIND, taskDay, byOrder, tasksBetween, overdueTasks, somedayTasks, newTask, completeTask, uncompleteTask, isMissingCollection } from '../core/tasks.js';
 import { render } from '../router.js';
 
 const WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -28,12 +28,14 @@ function taskRow(t) {
   const check = t.done
     ? `<button type="button" class="tcheck on" data-undo="${t.id}" aria-label="Вернуть: ${esc(t.title)}">${ICON.check}</button>`
     : `<button type="button" class="tcheck" data-done="${t.id}" aria-label="Отметить сделанным: ${esc(t.title)}"></button>`;
-  return `<div class="row task-row ${t.done ? 'is-done' : ''}">${check}
+  return `<div class="row task-row ${t.done ? 'is-done' : ''}" data-sw="${t.done ? 'del' : 'done'}" data-sw-col="tasks" data-sw-id="${t.id}" data-sw-label="Сделано" ${t.done ? '' : 'data-drag'}>${check}
     <button type="button" class="task-open" data-open="${t.id}">
       <span class="main"><span class="name">${esc(t.title)}</span>${meta && !t.done ? `<span class="meta">${esc(meta)}</span>` : ''}</span>
       ${t.time && !t.done ? `<span class="ttime">${esc(t.time)}</span>` : ''}
     </button></div>`;
 }
+
+const leftOpen = {}; // сколько несделанных дел было на дне при прошлом показе — чтобы заметить «всё сделано»
 
 export async function tasksScreen(route, alive) {
   const sel = state.taskDay;
@@ -58,7 +60,11 @@ export async function tasksScreen(route, alive) {
   if (!alive()) return;
 
   const mine = someday ? later : weekTasks.filter((t) => taskDay(t) === sel);
-  const active = mine.filter((t) => !t.done).sort(byTime);
+  const active = mine.filter((t) => !t.done).sort(byOrder);
+  // Только что закрыто последнее дело дня — маленький праздник
+  const key = someday ? 'someday' : sel;
+  if (leftOpen[key] > 0 && !active.length && mine.length) celebrate();
+  leftOpen[key] = active.length;
   const done = mine.filter((t) => t.done).sort((a, b) => (b.done_at || '').localeCompare(a.done_at || ''));
   const all = [...weekTasks, ...overdue, ...later];
   const d0 = parseYmd(week[0]), d6 = parseYmd(week[6]);

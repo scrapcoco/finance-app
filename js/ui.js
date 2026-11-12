@@ -32,6 +32,46 @@ export function toast(msg, action) {
   toastTimer = setTimeout(() => { $toast.hidden = true; }, action ? 6000 : 2600);
 }
 
+// Число «докручивается» от прежнего значения к новому (баланс на главной). fmt — как показать число
+export function countUp(el, from, to, fmt) {
+  if (!el || from === to || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const t0 = performance.now(), dur = 700;
+  const step = (now) => {
+    if (!el.isConnected) return;
+    const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmt(Math.round((from + (to - from) * e) * 100) / 100);
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// Маленький праздник: горсть цветных точек разлетается сверху экрана (все дела дня сделаны, долг погашен)
+export function celebrate() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const box = document.createElement('div');
+  box.className = 'confetti'; box.setAttribute('aria-hidden', 'true');
+  const colors = ['#6FE7AE', '#FFB26B', '#F4F6FA', '#9C8CFF'];
+  for (let i = 0; i < 28; i++) {
+    const p = document.createElement('i');
+    const a = Math.random() * Math.PI * 2, r = 90 + Math.random() * 170;
+    p.style.background = colors[i % colors.length];
+    box.append(p);
+    p.animate([
+      { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+      { transform: `translate(${Math.cos(a) * r}px, ${Math.sin(a) * r * 0.7 + 140}px) scale(.4) rotate(${Math.random() * 540}deg)`, opacity: 0 }
+    ], { duration: 900 + Math.random() * 500, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'forwards' });
+  }
+  document.body.append(box);
+  setTimeout(() => box.remove(), 1600);
+}
+
+// «Скрыть суммы»: класс hide-sums на <html> размывает все суммы (css/app.css), выбор хранится в localStorage
+export const sumsHidden = () => document.documentElement.classList.contains('hide-sums');
+export function setSumsHidden(on) {
+  document.documentElement.classList.toggle('hide-sums', on);
+  try { localStorage.setItem('hideSums', on ? '1' : '0'); } catch (e) { /* приватный режим */ }
+}
+
 export function errText(e) {
   if (!e) return 'Что-то пошло не так.';
   if (e.status === 0) return 'Сервер не отвечает. Проверь интернет.';
@@ -83,10 +123,10 @@ export function txRow(t, opts = {}) {
     <div class="amt ${t.kind === 'income' ? 'inc' : t.kind === 'expense' ? 'exp' : ''}">${signed(t.amount, t.kind)}</div>`;
   // С кнопкой «Оплачено» строка — не ссылка целиком (кнопку нельзя вкладывать в <a>)
   if (opts.pay && t.status === 'planned') {
-    return `<div class="row pay-row"><a class="row-link" href="${href}">${inner}</a>
+    return `<div class="row pay-row" data-sw="pay" data-sw-col="transactions" data-sw-id="${t.id}" data-sw-label="${t.kind === 'income' ? 'Получено' : 'Оплачено'}"><a class="row-link" href="${href}">${inner}</a>
       <button type="button" class="pay-btn" data-pay="${t.id}" aria-label="Отметить оплаченным: ${esc(title)}">${ICON.check}</button></div>`;
   }
-  return `<a class="row" href="${href}">${inner}</a>`;
+  return `<a class="row" href="${href}" data-sw="del" data-sw-col="transactions" data-sw-id="${t.id}">${inner}</a>`;
 }
 
 // Кнопки «Оплачено» (data-pay) в строках txRow; items — записи, которые сейчас на экране

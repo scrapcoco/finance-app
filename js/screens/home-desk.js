@@ -92,8 +92,8 @@ function projectsPanel(st, m) {
 export function deskHome(c) {
   const alerts = c.alerts ? `<section class="sec nudges dk-alerts" aria-label="Не пропустить">${c.alerts}</section>` : '';
   if (c.book !== 'business') {
-    return `<div class="dk-grid dk-personal">
-      <div class="dk-col">${c.hero}${alerts}${catsPanel(c.monthTx, c.m)}</div>
+    return `${c.hero}<div class="dk-grid dk-personal">
+      <div class="dk-col">${alerts}${catsPanel(c.monthTx, c.m)}</div>
       <div class="dk-col">${c.isCur ? tasksPanel(c.tasks) : ''}${paysPanel(c.pay14, false)}</div>
     </div>`;
   }

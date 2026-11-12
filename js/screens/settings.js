@@ -11,6 +11,8 @@ import { MODE_TEXT } from './mode.js';
 import { render, goHome } from '../router.js';
 import { COPYRIGHT, termsSheet } from './login.js';
 import { newCategorySheet } from './form.js';
+import { replayTour } from './tour.js';
+import { showNews } from './news.js';
 
 export async function settingsScreen(route, alive) {
   const [fields, cats] = await Promise.all([getFields(true), getCats(true)]);
@@ -51,7 +53,9 @@ export async function settingsScreen(route, alive) {
     </section>` : ''}
     <section class="sec">
       <div class="sec-head"><h2>Интерфейс</h2></div>
-      <div class="form-list"><div class="frow"><label id="snd-l">Звук нажатий</label><button type="button" class="switch" id="snd" role="switch" aria-labelledby="snd-l" aria-checked="${soundOn()}"></button></div></div>
+      <div class="form-list"><div class="frow"><label id="snd-l">Звук нажатий</label><button type="button" class="switch" id="snd" role="switch" aria-labelledby="snd-l" aria-checked="${soundOn()}"></button></div>
+        <div class="frow"><label>Как пользоваться</label><button type="button" class="link-btn" id="tour-again">Показать обучение</button></div>
+        <div class="frow"><label>Обновления</label><button type="button" class="link-btn" id="news-open">Что нового</button></div></div>
     </section>
     <section class="sec">
       <div class="sec-head"><h2>Аккаунт</h2></div>
@@ -98,6 +102,8 @@ export async function settingsScreen(route, alive) {
     } catch (e) { toast(errText(e)); }
   });
   $view.querySelector('#snd').onclick = (e) => {
+  $view.querySelector('#tour-again').onclick = replayTour;
+  $view.querySelector('#news-open').onclick = () => showNews(true);
     const on = !soundOn(); setSound(on); e.currentTarget.setAttribute('aria-checked', String(on));
   };
   $view.querySelector('#export-csv').onclick = (e) => exportCsv(e.currentTarget);

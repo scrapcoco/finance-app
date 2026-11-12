@@ -3,7 +3,7 @@ import { esc, nf, money, parseAmount, MONTHS_SHORT, MONTHS_PREP, ymd, pbDate, tx
 import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { pb, uid, ownerFilter } from '../core/pb.js';
-import { $view, toast, errText, openSheet, closeSheet } from '../ui.js';
+import { $view, toast, errText, openSheet, closeSheet, celebrate } from '../ui.js';
 import { getDebts, withBook, curBook } from '../core/data.js';
 import { render } from '../router.js';
 
@@ -32,6 +32,12 @@ export async function debtsScreen(route, alive) {
     const left = Math.max(0, d.total - paid);
     return { ...d, paid, left, pct: d.total > 0 ? Math.min(100, Math.round((paid / d.total) * 100)) : 0 };
   });
+  // Долг только что погашен полностью (в прошлый показ остаток был больше нуля) — маленький праздник
+  try {
+    const seen = JSON.parse(localStorage.getItem('debtLeft') || '{}');
+    if (rows.some((d) => seen[d.id] > 0 && d.left === 0)) celebrate();
+    localStorage.setItem('debtLeft', JSON.stringify({ ...seen, ...Object.fromEntries(rows.map((d) => [d.id, d.left])) }));
+  } catch (e) { /* приватный режим */ }
   const open = rows.filter((d) => !d.closed);
   const totalAll = open.reduce((s, d) => s + d.total, 0);
   const leftAll = open.reduce((s, d) => s + d.left, 0);
@@ -86,7 +92,7 @@ export async function debtsScreen(route, alive) {
       <div class="sec-head"><h2>${T.chart}</h2>${drop > 0 ? `<span class="inc" style="font-size:12px;font-weight:700">−${money(drop)} за полгода</span>` : ''}</div>
       <div class="bars" role="img" aria-label="Остаток долга по месяцам">
         ${chart.map((c) => `<div class="bar-col ${c.cur ? 'cur' : ''}"><div class="val">${c.v ? k(c.v) : ''}</div><div class="bar-pair">
-          <div class="bar wide" style="height:${(c.v / cMax) * 100}%;background:${c.cur ? 'var(--inc)' : '#D9DADF'}"></div></div>
+          <div class="bar wide" style="height:${(c.v / cMax) * 100}%;background:${c.cur ? 'var(--inc)' : 'rgba(255,255,255,0.28)'}"></div></div>
           <div class="lbl">${c.label}</div></div>`).join('')}
       </div>
     </section>

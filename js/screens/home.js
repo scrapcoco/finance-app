@@ -4,14 +4,16 @@ import { esc, money, net, moneySigned, parseAmount, MONTHS, MONTHS_GEN, MONTHS_S
 import { ICON } from '../core/icons.js';
 import { state } from '../core/state.js';
 import { CFG, pb, uid, ownerFilter } from '../core/pb.js';
-import { $view, toast, errText, monthSwitch, bindMonthSwitch, openSheet, closeSheet } from '../ui.js';
+import { $view, toast, errText, monthSwitch, bindMonthSwitch, openSheet, closeSheet, countUp, sumsHidden, setSumsHidden } from '../ui.js';
 import { txBetween, getBalance, withBook, curBook, markPaid } from '../core/data.js';
-import { byTime, tasksBetween, completeTask, timeLeft, isMissingCollection } from '../core/tasks.js';
+import { byTime, byOrder, tasksBetween, completeTask, timeLeft, isMissingCollection } from '../core/tasks.js';
 import { taskSheet } from './tasks.js';
 import { openAssistant } from './assistant.js';
 import { render } from '../router.js';
 import { deskHome } from './home-desk.js';
 import { projectStats } from './projects.js';
+import { maybeTour } from './tour.js';
+import { maybeNews } from './news.js';
 
 const plural = (n, one, few, many) => {
   const a = n % 10, b = n % 100;
@@ -35,6 +37,8 @@ function loadReview(alive) {
     .then((r) => { writeReview({ week: wk, text: r.text || '' }, key); if (r.text && alive()) render(); })
     .catch(() => {});
 }
+
+const shownBal = {}; // последний показанный баланс по виду аккаунта — для countUp
 
 export async function homeScreen(route, alive) {
   const m = state.month;
@@ -109,7 +113,7 @@ export async function homeScreen(route, alive) {
   const payCard = (t) => {
     const name = t.note || t.expand?.category?.name || (t.kind === 'income' ? 'Доход' : 'Расход');
     const late = daysUntil(txDay(t)) < 0;
-    return `<div class="card nudge">
+    return `<div class="card nudge" data-sw="pay" data-sw-col="transactions" data-sw-id="${t.id}" data-sw-label="${t.kind === 'income' ? 'Получено' : 'Оплачено'}">
       <a class="nudge-link" href="#/edit/${t.id}">
         <span class="nudge-ic ${late ? 'late' : t.kind === 'income' ? 'inc' : 'exp'}">${ICON.cal}</span>
         <span class="main"><span class="nudge-k ${late ? 'late' : t.kind === 'income' ? 'inc' : 'exp'}">${payLabel(t)}</span>
@@ -118,7 +122,7 @@ export async function homeScreen(route, alive) {
   };
   const taskCard = (t) => {
     const left = timeLeft(t.time);
-    return `<div class="card nudge">
+    return `<div class="card nudge" data-sw="done" data-sw-col="tasks" data-sw-id="${t.id}" data-sw-label="Сделано">
       <button type="button" class="nudge-link" data-open="${t.id}">
         <span class="nudge-ic inc">${ICON.clock}</span>
         <span class="main"><span class="nudge-k ${left === 'Время прошло' ? 'late' : 'inc'}">${left} · ${esc(t.time)}</span>
@@ -154,7 +158,7 @@ export async function homeScreen(route, alive) {
   const moreLink = isCur && restTasks > 0
     ? `<a class="someday-link" href="#/tasks">${shownTasks.length ? 'Ещё' : 'На сегодня'} ${restTasks} ${plural(restTasks, 'дело', 'дела', 'дел')}${ICON.right}</a>` : '';
 
-  const head = `<div class="head">${monthSwitch()}<div class="head-btns"><button type="button" class="icon-btn asst-btn" id="asst" aria-label="Помощник">${ICON.spark}</button><a class="icon-btn" href="#/settings" aria-label="Настройки">${ICON.gear}</a></div></div>`;
+  const head = `<div class="head">${monthSwitch()}<div class="head-btns"><button type="button" class="icon-btn" id="hide" aria-label="Скрыть суммы" aria-pressed="${sumsHidden()}">${sumsHidden() ? ICON.eyeOff : ICON.eye}</button><button type="button" class="icon-btn asst-btn" id="asst" aria-label="Помощник">${ICON.spark}</button><a class="icon-btn" href="#/settings" aria-label="Настройки">${ICON.gear}</a></div></div>`;
   const hero = `<section class="hero">
       <div class="hero-top">
         <a class="bal-btn" href="#/overview" aria-label="Баланс на сегодня ${moneySigned(balance)}. Открыть обзор">
@@ -203,11 +207,15 @@ export async function homeScreen(route, alive) {
   // На ПК платежи и дела — в своих колонках, поэтому из «Не пропустить» остаются только предупреждение и итоги недели
   const alerts = isCur ? [...(shortage ? [shortCard(shortage)] : []), ...(review ? [reviewCard()] : [])].join('') : '';
   $view.innerHTML = desk
-    ? head + deskHome({ book: state.book, m, isCur, balance, forecast: isCur && plannedNet ? `${moneySigned(balance + plannedNet)} к ${lastDay}` : '', inc, exp, prevInc, prevExp, delta, note, hero, alerts, monthTx, pay14, tasks: todayTasks.slice().sort(byTime), proj })
+    ? head + deskHome({ book: state.book, m, isCur, balance, forecast: isCur && plannedNet ? `${moneySigned(balance + plannedNet)} к ${lastDay}` : '', inc, exp, prevInc, prevExp, delta, note, hero, alerts, monthTx, pay14, tasks: todayTasks.slice().sort(byOrder), proj })
     : `${head}${biz ? heroBiz : hero}
-    ${nudges || moreLink ? `<section class="sec nudges" aria-label="Не пропустить">${nudges}${moreLink}</section>` : ''}
+    ${nudges || moreLink ? `<section class="sec" aria-label="Не пропустить"><div class="sec-head"><h2>Не пропустить</h2></div><div class="slab">${nudges}${moreLink}</div></section>` : ''}
     ${quiet.length ? `<section class="sec quiet-lines">${quiet.join('')}</section>` : ''}`;
   bindMonthSwitch();
+  // Баланс «докручивается» от прошлого показанного значения (в первый раз — от нуля)
+  countUp($view.querySelector('.hero .big'), shownBal[state.book] ?? 0, balance, moneySigned);
+  shownBal[state.book] = balance;
+  $view.querySelector('#hide').onclick = (e) => { const on = !sumsHidden(); setSumsHidden(on); e.currentTarget.setAttribute('aria-pressed', String(on)); e.currentTarget.innerHTML = on ? ICON.eyeOff : ICON.eye; };
   $view.querySelector('#asst').onclick = (e) => openAssistant(e.currentTarget);
   $view.querySelector('#cash')?.addEventListener('click', () => cashSheet(balance));
   $view.querySelector('#rv-x')?.addEventListener('click', () => { writeReview({ ...readReview(), hidden: true }); render(); });
@@ -227,6 +235,8 @@ export async function homeScreen(route, alive) {
     } catch (e) { toast(errText(e)); b.disabled = false; }
   });
   $view.querySelectorAll('[data-open]').forEach((b) => b.onclick = () => { const t = todayTasks.find((x) => x.id === b.dataset.open); if (t) taskSheet(t); });
+  maybeTour(); // первый вход на этом устройстве — короткое обучение
+  maybeNews(); // после обновления приложения — окно «Что нового»
 }
 
 export function cashSheet(balance) {

@@ -10,6 +10,8 @@ export const taskDay = (t) => (t.day || '').slice(0, 10);
 
 // Сначала дела со временем (по порядку), потом без времени — в порядке добавления
 export const byTime = (a, b) => (a.time || '99:99').localeCompare(b.time || '99:99') || a.created.localeCompare(b.created);
+// Порядок в списке дел: сначала расставленные вручную (поле sort, перетаскивание на телефоне), остальные — по времени
+export const byOrder = (a, b) => (a.sort || 1e9) - (b.sort || 1e9) || byTime(a, b);
 
 // Дела с from по to включительно (ymd)
 export function tasksBetween(from, to) {
