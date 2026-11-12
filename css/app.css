@@ -1049,3 +1049,35 @@ html.asst-open, html.asst-open body { overflow: hidden; overscroll-behavior: non
 .review-text { font-size: 14px; font-weight: 600; line-height: 1.4; white-space: normal; }
 @keyframes asst-mic { 50% { box-shadow: 0 0 0 6px rgba(185,201,250,.25); } }
 @media (prefers-reduced-motion: reduce) { .asst-mic.on { animation: none; } }
+
+/* ===== Объявление о грядущем обновлении (js/screens/announce.js) — временно =====
+   Узкая полоска под шапкой главной: рамка переливается, метка «Скоро» пульсирует. Убрать вместе с announce.js */
+.ann { display: flex; align-items: center; gap: 6px; }
+.ann-main {
+  flex: 1; min-width: 0; height: 46px; padding: 0 10px 0 6px; display: flex; align-items: center; gap: 10px; cursor: pointer;
+  border: 2px solid transparent; border-radius: 23px; color: #FFFFFF; font: inherit; font-size: 14px; font-weight: 700; text-align: left;
+  background: linear-gradient(#0C1A16, #0C1A16) padding-box, linear-gradient(90deg, #6FE7AE, #FFD84A, #FF9E6B, #6FE7AE, #FFD84A) border-box;
+  background-size: 100% 100%, 300% 100%; animation: ann-flow 3.5s linear infinite;
+  box-shadow: 0 0 22px rgba(111,231,174,0.28);
+}
+@keyframes ann-flow { from { background-position: 0 0, 0 0; } to { background-position: 0 0, 150% 0; } }
+.ann-tag {
+  flex: none; height: 30px; padding: 0 11px; border-radius: 15px; display: inline-flex; align-items: center;
+  font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #0C0E14; background: #FFD84A;
+  animation: ann-pulse 1.6s ease-in-out infinite;
+}
+@keyframes ann-pulse { 50% { box-shadow: 0 0 0 5px rgba(255,216,74,0.28); } }
+.ann-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ann-go { flex: none; display: flex; color: #6FE7AE; }
+.ann-go svg { width: 18px; height: 18px; }
+.ann-x { flex: none; width: 36px; height: 36px; padding: 0; border: none; border-radius: 12px; background: transparent; color: var(--muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.ann-x svg { width: 16px; height: 16px; }
+.ann-lead { margin: 0; color: var(--soft); font-size: 14px; line-height: 1.45; }
+.ann-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.ann-list li { position: relative; padding-left: 16px; display: flex; flex-direction: column; gap: 2px; }
+.ann-list li::before { content: ""; position: absolute; left: 0; top: 8px; width: 6px; height: 6px; border-radius: 3px; background: #6FE7AE; }
+.ann-list b { font-size: 15px; font-weight: 700; }
+.ann-list span { font-size: 14px; line-height: 1.45; color: var(--soft); }
+@media (max-width: 360px) { .ann-main { font-size: 13px; gap: 8px; } }
+@media (prefers-reduced-motion: reduce) { .ann-main, .ann-tag { animation: none; } }
+@media (max-width: 519px) { .ann-more { display: none; } }

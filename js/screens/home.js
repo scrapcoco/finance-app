@@ -10,6 +10,7 @@ import { byTime, tasksBetween, completeTask, timeLeft, isMissingCollection } fro
 import { taskSheet } from './tasks.js';
 import { openAssistant } from './assistant.js';
 import { render } from '../router.js';
+import { mountAnnounce } from './announce.js';
 
 const plural = (n, one, few, many) => {
   const a = n % 10, b = n % 100;
@@ -160,6 +161,7 @@ export async function homeScreen(route, alive) {
     </section>
     ${nudges || moreLink ? `<section class="sec nudges" aria-label="Не пропустить">${nudges}${moreLink}</section>` : ''}`;
   bindMonthSwitch();
+  mountAnnounce(); // временно: объявление о грядущем обновлении
   $view.querySelector('#asst').onclick = (e) => openAssistant(e.currentTarget);
   $view.querySelector('#cash').onclick = () => cashSheet(balance);
   $view.querySelector('#rv-x')?.addEventListener('click', () => { writeReview({ ...readReview(), hidden: true }); render(); });
