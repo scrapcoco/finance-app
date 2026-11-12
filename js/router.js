@@ -5,7 +5,10 @@ import { pb } from './core/pb.js';
 import { state } from './core/state.js';
 import { $view, $tabbar, $sheetRoot, errText, closeSheet, placeGlow, freezeGlows } from './ui.js';
 import { viewLogin } from './screens/login.js';
-import { homeScreen } from './screens/home.js';
+import { lentaScreen } from './screens/lenta.js';
+import { openAssistant } from './screens/assistant.js';
+import { questDone } from './screens/tour.js';
+import { applySkin } from './screens/gift.js';
 import { addScreen, editScreen } from './screens/form.js';
 import { calendarScreen } from './screens/calendar.js';
 import { historyScreen } from './screens/history.js';
@@ -48,9 +51,15 @@ export function renderTabbar(active) {
     $tabbar.innerHTML = '<i class="tab-glow" aria-hidden="true"></i><div class="side-brand" title="Финансы"><img src="icons/icon.svg" alt="Финансы" width="40" height="40"></div>' + tabs.map((t) => t.add
       ? `<a class="tab-add" href="#/add" aria-label="${t.label}" data-label="${t.label} · N">${t.icon}<span class="side-label">${t.label}</span></a>`
       : `<a class="tab ${t.desk ? 'desk-only' : ''}" href="#/${t.r}" data-r="${t.r}" data-label="${t.label}" aria-label="${t.label}">${t.icon}<span>${t.label}</span></a>`
-    ).join('');
+    ).join('')
+      // Телефон: вместо вкладок — чёрная строка: «домой» (на других экранах), помощник, новая запись
+      + `<div class="lbar"><a class="lbar-home" href="#/" aria-label="На главную">${ICON.home}</a>
+        <button type="button" class="lbar-ask" id="lbar-ask"><i class="orb" aria-hidden="true"></i><span>Спроси или запиши</span></button>
+        <a class="lbar-add" href="#/add" aria-label="Новая запись">${ICON.plus}</a></div>`;
+    $tabbar.querySelector('#lbar-ask').onclick = (e) => { openAssistant(e.currentTarget.querySelector('.orb')); questDone('ask'); };
     glowFrom = null;
   }
+  $tabbar.dataset.home = String(parseRoute().name === ''); // на главной кнопка «домой» в строке не нужна
   $tabbar.querySelectorAll('.tab').forEach((a) => {
     if (a.dataset.r === active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });
@@ -97,7 +106,7 @@ export function parseRoute() {
 }
 
 const ROUTES = {
-  '': homeScreen, add: addScreen, edit: editScreen, calendar: calendarScreen,
+  '': lentaScreen, add: addScreen, edit: editScreen, calendar: calendarScreen,
   overview: overviewScreen, history: historyScreen, debts: debtsScreen, settings: settingsScreen,
   projects: projectsScreen, project: projectScreen, records: recordsScreen, tasks: tasksScreen
 };
@@ -126,6 +135,7 @@ export async function render() {
     $view.dataset.screen = 'mode'; $view.classList.add('no-tabs');
     return modeScreen();
   }
+  applySkin(); // цвет главной карточки (подарок первопроходцам)
   const route = parseRoute();
   // Проекты — только у бизнеса
   if (state.book === 'personal' && (route.name === 'projects' || route.name === 'project')) { location.replace('#/'); return; }

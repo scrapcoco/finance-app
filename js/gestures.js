@@ -114,7 +114,7 @@ function onEnd() {
   else if (s.mode === 'pull') endPull(s);
   else if (s.mode === 'drag') endDrag(s);
   else if (s.mode === 'nav') endNav(s);
-  else if (s.held && !s.mode && s.row) { s.row.classList.remove('sw-lift'); quickActions(s.row.dataset.swCol, s.row.dataset.swId); }
+  else if (s.held && !s.mode && s.row) { s.row.classList.remove('sw-lift'); if (s.row.dataset.demo === undefined) quickActions(s.row.dataset.swCol, s.row.dataset.swId); }
   else if (s.held && !s.mode && s.day) { s.day.classList.remove('sw-lift'); newOnDay(s.day.dataset.day); }
 }
 
@@ -136,7 +136,8 @@ function newOnDay(day) {
 
 function endRow(s) {
   const row = s.row, kind = row.dataset.sw, w = row.offsetWidth, x = s.x || 0;
-  const del = kind === 'del' ? x > 90 : x > Math.max(200, w * 0.6);
+  const demo = row.dataset.demo !== undefined; // учебная строка знакомства: не удаляется, на сервер не ходит
+  const del = !demo && (kind === 'del' ? x > 90 : x > Math.max(200, w * 0.6));
   const act = !del && kind !== 'del' && x > ACT;
   row.classList.remove('sw-on');
   if (!del && !act) { row.classList.remove('sw-del'); row.style.transform = ''; return; }
@@ -145,7 +146,9 @@ function endRow(s) {
   if (del) { removeRecord(row.dataset.swCol, row.dataset.swId).then((ok) => { if (!ok) back(); }); return; }
   const btn = row.querySelector('[data-pay], [data-done]');
   if (!btn) { back(); return; }
+  row.dataset.swiped = '1'; // обработчик кнопки может отличить смахивание от нажатия
   btn.click();
+  if (demo) { back(); return; }
   // Если сервер ответил ошибкой, экран не перерисуется, а кнопка снова станет активной — возвращаем строку на место
   const mo = new MutationObserver(() => { if (!btn.disabled) { mo.disconnect(); back(); } });
   mo.observe(btn, { attributes: true, attributeFilter: ['disabled'] });

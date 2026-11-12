@@ -1,7 +1,7 @@
 // Кэширует только оболочку приложения. Данные всегда берутся с сервера.
-const CACHE = 'finance-v91';
+const CACHE = 'finance-v95';
 const SHELL = ['./', 'index.html', 'css/app.css', 'js/config.js', 'js/pocketbase.umd.js',
-  'js/main.js', 'js/router.js', 'js/ui.js', 'js/gestures.js', 'js/core/pb.js', 'js/core/util.js', 'js/core/icons.js', 'js/core/state.js', 'js/core/data.js', 'js/core/tasks.js', 'js/screens/tasks.js', 'js/screens/assistant.js', 'js/screens/login.js', 'js/screens/home.js', 'js/screens/form.js', 'js/screens/calendar.js', 'js/screens/history.js', 'js/screens/overview.js', 'js/screens/projects.js', 'js/screens/records.js', 'js/screens/debts.js', 'js/screens/settings.js', 'js/screens/push.js', 'js/screens/ingest.js', 'js/screens/mode.js', 'js/screens/home-desk.js', 'js/screens/tour.js', 'js/screens/news.js', 'img/bg-leaf.jpg', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/apple-touch-icon.png'];
+  'js/main.js', 'js/router.js', 'js/ui.js', 'js/gestures.js', 'js/core/pb.js', 'js/core/util.js', 'js/core/icons.js', 'js/core/state.js', 'js/core/data.js', 'js/core/tasks.js', 'js/screens/tasks.js', 'js/screens/assistant.js', 'js/screens/login.js', 'js/screens/home.js', 'js/screens/form.js', 'js/screens/calendar.js', 'js/screens/history.js', 'js/screens/overview.js', 'js/screens/projects.js', 'js/screens/records.js', 'js/screens/debts.js', 'js/screens/settings.js', 'js/screens/push.js', 'js/screens/ingest.js', 'js/screens/mode.js', 'js/screens/home-desk.js', 'js/screens/tour.js', 'js/screens/news.js', 'js/screens/lenta.js', 'js/screens/gift.js', 'img/bg-leaf.jpg', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

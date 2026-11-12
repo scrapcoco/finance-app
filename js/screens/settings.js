@@ -12,6 +12,7 @@ import { render, goHome } from '../router.js';
 import { COPYRIGHT, termsSheet } from './login.js';
 import { newCategorySheet } from './form.js';
 import { replayTour } from './tour.js';
+import { SKINS, isPioneer, curSkin, setSkin } from './gift.js';
 import { showNews } from './news.js';
 
 export async function settingsScreen(route, alive) {
@@ -55,7 +56,8 @@ export async function settingsScreen(route, alive) {
       <div class="sec-head"><h2>Интерфейс</h2></div>
       <div class="form-list"><div class="frow"><label id="snd-l">Звук нажатий</label><button type="button" class="switch" id="snd" role="switch" aria-labelledby="snd-l" aria-checked="${soundOn()}"></button></div>
         <div class="frow"><label>Как пользоваться</label><button type="button" class="link-btn" id="tour-again">Показать обучение</button></div>
-        <div class="frow"><label>Обновления</label><button type="button" class="link-btn" id="news-open">Что нового</button></div></div>
+        <div class="frow"><label>Обновления</label><button type="button" class="link-btn" id="news-open">Что нового</button></div>
+        ${isPioneer() ? `<div class="frow"><label for="skin">Первопроходец · цвет карточки</label><select id="skin">${Object.entries(SKINS).map(([k, v]) => `<option value="${k}" ${k === curSkin() ? 'selected' : ''}>${v}</option>`).join('')}</select></div>` : ''}</div>
     </section>
     <section class="sec">
       <div class="sec-head"><h2>Аккаунт</h2></div>
@@ -101,9 +103,10 @@ export async function settingsScreen(route, alive) {
       state.cache.cats = null; toast('Категория удалена'); render();
     } catch (e) { toast(errText(e)); }
   });
-  $view.querySelector('#snd').onclick = (e) => {
   $view.querySelector('#tour-again').onclick = replayTour;
   $view.querySelector('#news-open').onclick = () => showNews(true);
+  $view.querySelector('#skin')?.addEventListener('change', (e) => { setSkin(e.currentTarget.value); toast('Цвет карточки изменён'); });
+  $view.querySelector('#snd').onclick = (e) => {
     const on = !soundOn(); setSound(on); e.currentTarget.setAttribute('aria-checked', String(on));
   };
   $view.querySelector('#export-csv').onclick = (e) => exportCsv(e.currentTarget);

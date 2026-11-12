@@ -89,7 +89,7 @@ export function monthSwitch() {
   const m = state.month;
   return `<div class="month-switch">
     <button class="icon-btn ghost" data-m="-1" aria-label="Предыдущий месяц">${ICON.left}</button>
-    <div class="title">${MONTHS[m.getMonth()]} ${m.getFullYear()}</div>
+    <div class="title">${MONTHS[m.getMonth()]}<span class="yr${m.getFullYear() === new Date().getFullYear() ? ' now' : ''}" data-s=" ’${String(m.getFullYear()).slice(2)}"> ${m.getFullYear()}</span></div>
     <button class="icon-btn ghost" data-m="1" aria-label="Следующий месяц">${ICON.right}</button>
   </div>`;
 }
